@@ -1,0 +1,113 @@
+:root {
+  --bg: #fff5f7;
+  --card: #ffffff;
+  --primary: #e94873;
+  --primary-dark: #c43363;
+  --text: #2a1a20;
+  --muted: #8a7480;
+  --success: #2e9e5b;
+  --error: #d1453b;
+  --radius: 16px;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(180deg, #fff0f4 0%, #fff8f5 100%);
+  color: var(--text);
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+}
+
+.hero { text-align: center; margin-bottom: 24px; }
+.hero h1 {
+  font-size: 44px;
+  margin: 0;
+  background: linear-gradient(135deg, #e94873, #ff8a65);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 800;
+}
+.tagline { font-weight: 600; margin: 4px 0; }
+.sub { color: var(--muted); font-size: 14px; }
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(233,72,115,0.08);
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+label { display:flex; flex-direction:column; gap:6px; font-size:14px; font-weight:600; color: var(--muted); }
+input, textarea {
+  border: 1px solid #f0d9de;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--text);
+}
+textarea { min-height: 80px; resize: vertical; }
+
+button {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.ghost {
+  background: transparent;
+  color: var(--primary-dark);
+  border: 1px solid #f0d9de;
+}
+
+.error { color: var(--error); font-size: 14px; }
+.success { color: var(--success); font-size: 14px; font-weight: 600; }
+.hint { color: var(--muted); font-size: 13px; text-align: center; padding: 6px 0; }
+.fineprint { color: var(--muted); font-size: 11px; text-align: center; }
+
+.preview { width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; }
+.offerPhoto { width: 100%; max-height: 320px; object-fit: cover; border-radius: 12px; }
+.place { color: var(--muted); font-size: 14px; }
+
+.mapPage { display: flex; flex-direction: column; height: 100dvh; }
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 16px; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 10;
+}
+.brand { font-weight: 800; color: var(--primary); font-size: 20px; }
+.topbar div { display: flex; gap: 8px; }
+.topbar button { padding: 8px 14px; font-size: 13px; }
+.mapWrap { flex: 1; position: relative; }
+
+.sheetOverlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: flex-end; z-index: 1000;
+}
+.sheet {
+  background: white; width: 100%; border-radius: 20px 20px 0 0;
+  padding: 20px; display: flex; flex-direction: column; gap: 12px;
+  max-height: 85vh; overflow-y: auto;
+}
+
+.row { display: flex; gap: 10px; }
+.requestCard { flex-direction: row; align-items: flex-start; gap: 12px; }
+.requestCard .preview { width: 80px; height: 80px; flex-shrink: 0; border-radius: 12px; }
