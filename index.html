@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Dette — Rencontres express</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="view-landing" class="view active">
+  <main class="container">
+    <div class="hero">
+      <h1>Dette</h1>
+      <p class="tagline">Choisis un lieu. Montre-toi. Rencontre.</p>
+      <p class="sub">Des rencontres express, sans prise de tête : un lieu, une photo, un message pour te vendre. Les personnes intéressées te font une demande — tu choisis avec qui tu es "en dette".</p>
+    </div>
+    <form id="landing-form" class="card">
+      <label>Prénom
+        <input id="landing-name" placeholder="Ton prénom" />
+      </label>
+      <label>Date de naissance
+        <input id="landing-birthdate" type="date" />
+      </label>
+      <p id="landing-error" class="error" style="display:none"></p>
+      <button type="submit">Entrer</button>
+      <p class="fineprint">En continuant, tu confirmes avoir 18 ans ou plus. Version démo — les données restent sur cet appareil.</p>
+    </form>
+  </main>
+</div>
+
+<div id="view-map" class="view">
+  <main class="mapPage">
+    <header class="topbar">
+      <span class="brand">Dette</span>
+      <div>
+        <button class="ghost" id="btn-inbox">Demandes</button>
+        <button class="ghost" id="btn-logout">Quitter</button>
+      </div>
+    </header>
+    <div class="mapWrap"><div id="leaflet-map"></div></div>
+    <p class="hint">Touche un endroit sur la carte pour y proposer une dette. Touche un coeur pour voir une offre.</p>
+    <div class="nav-spacer"></div>
+  </main>
+</div>
+
+<div id="sheet-overlay" class="sheetOverlay">
+  <form id="create-form" class="sheet">
+    <h3>Propose une dette ici</h3>
+    <label>Nom du lieu (optionnel)
+      <input id="create-place" placeholder="Ex: Café des Fleurs" />
+    </label>
+    <div class="photo-field">
+      <label style="margin-bottom:0">Ta photo</label>
+      <div class="photo-thumb-row">
+        <img id="create-preview" class="preview" style="display:none" />
+        <div class="photo-actions">
+          <button type="button" id="create-camera-btn">Ouvrir la caméra</button>
+          <input type="file" id="create-photo-fallback" accept="image/*" capture="user" style="display:none" />
+        </div>
+      </div>
+    </div>
+    <label>Ton message pour te vendre
+      <textarea id="create-message" maxlength="200" placeholder="Sois toi-même, sois bref..."></textarea>
+    </label>
+    <button type="submit" id="create-submit" disabled>Publier</button>
+    <button type="button" class="ghost" id="create-cancel">Annuler</button>
+  </form>
+</div>
+
+<div id="camera-overlay" class="sheetOverlay">
+  <div class="camera-modal">
+    <video id="camera-video" autoplay playsinline muted></video>
+    <p class="camera-hint" id="camera-hint">Cadre ton visage puis appuie sur le bouton pour te prendre en photo.</p>
+    <div class="camera-controls">
+      <button type="button" class="ghost" id="camera-cancel">Annuler</button>
+      <button type="button" id="camera-shutter" aria-label="Prendre la photo" class="shutter-btn"></button>
+      <button type="button" class="ghost" id="camera-switch">Changer</button>
+    </div>
+  </div>
+</div>
+<canvas id="camera-canvas" style="display:none"></canvas>
+
+<div id="view-offer" class="view">
+  <main class="container">
+    <button class="ghost" id="offer-back">&larr; Retour à la carte</button>
+    <div id="offer-detail" class="card"></div>
+    <div id="offer-action"></div>
+  </main>
+</div>
+
+<div id="view-inbox" class="view">
+  <main class="container">
+    <button class="ghost" id="inbox-back">&larr; Retour à la carte</button>
+    <h2>Demandes reçues</h2>
+    <div id="inbox-received"></div>
+    <h2>Mes demandes envoyées</h2>
+    <div id="inbox-sent"></div>
+  </main>
+</div>
+
+<nav id="bottom-nav" class="bottom-nav" style="display:none;">
+  <button type="button" class="nav-item" data-nav="map"><span class="nav-icon">🗺️</span><span>Carte</span></button>
+  <button type="button" class="nav-item" data-nav="inbox"><span class="nav-icon">💌</span><span>Demandes</span></button>
+</nav>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
