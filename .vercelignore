@@ -1,0 +1,9 @@
+# Le site déployé est statique : seuls les fichiers compilés sont envoyés.
+node_modules/
+src/
+tools/
+.claude/
+package.json
+package-lock.json
+tailwind.config.js
+README.md

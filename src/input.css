@@ -1,0 +1,282 @@
+/* ===========================================================
+   Dette — source Tailwind
+   -----------------------------------------------------------
+   Ce fichier est la SOURCE du design. Il est compilé vers
+   ../style.css par la commande :  npm run build
+   Ne jamais modifier style.css à la main : il est écrasé.
+   =========================================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------
+   Base
+   --------------------------------------------------------- */
+@layer base {
+  html,
+  body {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-[#FFFBFC] font-sans text-ink-900 antialiased;
+    background-image:
+      radial-gradient(60rem 30rem at 12% -12%, rgba(255, 61, 110, 0.13), transparent 60%),
+      radial-gradient(52rem 28rem at 96% 4%, rgba(255, 122, 89, 0.13), transparent 58%),
+      radial-gradient(46rem 26rem at 50% 108%, rgba(255, 61, 110, 0.09), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  h2 { @apply text-lg font-extrabold tracking-tight text-ink-900; }
+  h3 { @apply text-xl font-extrabold tracking-tight text-ink-900; }
+
+  ::selection { @apply bg-brand-200 text-brand-900; }
+}
+
+/* ---------------------------------------------------------
+   Composants
+   --------------------------------------------------------- */
+@layer components {
+  /* ---------- Vues ---------- */
+  .view { @apply hidden; }
+  .view.active { @apply block animate-fadeUp; }
+  .container-app { @apply mx-auto w-full max-w-lg px-5 pb-28 pt-8 sm:pt-12; }
+
+  /* ---------- Cartes & surfaces ---------- */
+  .card {
+    @apply flex flex-col gap-4 rounded-3xl border border-white/70 bg-white/85 p-6
+           shadow-soft backdrop-blur-xl;
+  }
+  .glass { @apply border border-white/60 bg-white/75 backdrop-blur-xl; }
+
+  /* ---------- Formulaires ---------- */
+  label {
+    @apply flex flex-col gap-2 text-[11px] font-bold uppercase tracking-[0.09em] text-ink-300;
+  }
+  input,
+  textarea {
+    @apply w-full rounded-2xl border border-brand-100 bg-white px-4 py-3.5 text-[15px]
+           font-medium text-ink-900 shadow-sm outline-none transition
+           placeholder:font-normal placeholder:text-ink-200
+           focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10;
+  }
+  textarea { @apply min-h-[104px] resize-y leading-relaxed; }
+
+  /* ---------- Boutons ---------- */
+  button {
+    @apply inline-flex items-center justify-center gap-2 rounded-full
+           bg-gradient-to-br from-brand-500 to-ember-500 px-6 py-3.5
+           text-[15px] font-bold tracking-tight text-white shadow-glow
+           transition duration-200 will-change-transform
+           hover:-translate-y-0.5 hover:shadow-glowlg
+           active:translate-y-0 active:scale-[0.98]
+           disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none;
+  }
+  button.ghost {
+    @apply border border-brand-100 bg-white/85 bg-none text-brand-700 shadow-none backdrop-blur
+           hover:border-brand-300 hover:bg-white hover:shadow-soft;
+  }
+
+  /* ---------- Textes d'état ---------- */
+  .error {
+    @apply rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600 ring-1 ring-rose-100;
+  }
+  .success {
+    @apply rounded-2xl bg-emerald-50 px-4 py-3 text-center text-sm font-bold text-emerald-700
+           ring-1 ring-emerald-100;
+  }
+  .hint { @apply px-3 py-2 text-center text-[13px] font-medium leading-relaxed text-ink-300; }
+  .fineprint { @apply text-center text-[11px] leading-relaxed text-ink-200; }
+
+  /* ---------- Photos ---------- */
+  .preview { @apply block max-h-56 w-full rounded-2xl object-cover ring-1 ring-black/5; }
+  .photo-field { @apply flex flex-col gap-3; }
+  .photo-thumb-row { @apply flex items-center gap-4; }
+  .photo-thumb-row .preview { @apply h-24 w-24 shrink-0 rounded-2xl shadow-lift ring-4 ring-white; }
+  .photo-actions { @apply flex flex-1 flex-col gap-2; }
+  .photo-actions button { @apply px-4 py-3 text-[13px]; }
+
+  /* ---------- Barre supérieure (carte) ---------- */
+  .topbar {
+    @apply z-20 flex items-center justify-between gap-3 border-b border-white/60
+           bg-white/80 px-5 py-3.5 backdrop-blur-2xl;
+    box-shadow: 0 6px 24px -12px rgba(22, 13, 18, 0.18);
+  }
+  .topbar button { @apply px-4 py-2.5 text-[13px]; }
+  .brand {
+    @apply bg-gradient-to-br from-brand-500 to-ember-500 bg-clip-text text-2xl
+           font-black tracking-tight text-transparent;
+  }
+
+  /* ---------- Feuilles / modales ---------- */
+  .sheetOverlay {
+    @apply fixed inset-0 z-[1000] hidden items-end justify-center bg-ink-900/45
+           backdrop-blur-sm sm:items-center sm:p-6;
+  }
+  .sheetOverlay.active { @apply flex; }
+  .sheet {
+    @apply flex max-h-[88vh] w-full max-w-lg animate-slideUp flex-col gap-4
+           overflow-y-auto rounded-t-4xl bg-white px-6 pb-8 pt-5 sm:rounded-4xl;
+    box-shadow: 0 -12px 48px rgba(22, 13, 18, 0.24);
+  }
+  .sheet::before {
+    content: '';
+    @apply mx-auto mb-1 block h-1.5 w-11 shrink-0 rounded-full bg-brand-100 sm:hidden;
+  }
+
+  /* ---------- Profil / offre ---------- */
+  .profile-card {
+    @apply flex animate-popIn flex-col items-center gap-5 border-0 bg-transparent p-0
+           shadow-none backdrop-blur-none;
+  }
+  .msg-bubble {
+    @apply max-w-[19rem] rounded-3xl rounded-bl-lg bg-gradient-to-br from-brand-500
+           to-ember-500 px-6 py-4 text-center text-[14.5px] font-semibold
+           leading-relaxed text-white shadow-glow;
+  }
+  .profile-photo-wrap { @apply relative h-44 w-44 shrink-0 sm:h-48 sm:w-48; }
+  .profile-photo-wrap::before {
+    content: '';
+    @apply absolute -inset-[6px] rounded-full bg-gradient-to-br from-brand-500 to-ember-500;
+  }
+  .profile-photo {
+    @apply relative block h-full w-full rounded-full object-cover ring-[6px] ring-white;
+    box-shadow: 0 14px 36px -10px rgba(22, 13, 18, 0.34);
+  }
+  .profile-badge {
+    @apply absolute bottom-1 right-1 z-10 flex h-11 w-11 items-center justify-center
+           rounded-full bg-white text-lg shadow-lift;
+  }
+  .profile-name { @apply m-0 text-lg font-extrabold tracking-tight text-ink-900; }
+  .profile-actions { @apply flex w-full max-w-[19rem] gap-3; }
+  .profile-actions button { @apply flex-1 px-3 py-3.5 text-sm; }
+  .btn-interest { @apply bg-gradient-to-br from-brand-500 to-ember-500; }
+  .btn-pass {
+    @apply border border-brand-100 bg-white bg-none text-brand-700 shadow-none
+           hover:border-brand-300 hover:bg-brand-50;
+  }
+  .btn-danger {
+    @apply border border-rose-200 bg-white bg-none text-rose-600 shadow-none
+           hover:border-rose-400 hover:bg-rose-50;
+  }
+
+  /* ---------- Ligne « demande envoyée » ---------- */
+  .requestCard { @apply flex-row items-center gap-4 p-4; }
+  .requestCard .preview { @apply h-20 w-20 shrink-0 rounded-2xl; }
+  .requestCard strong { @apply block text-[15px] font-extrabold tracking-tight text-ink-900; }
+  .requestCard .hint { @apply px-0 py-0.5 text-left text-xs; }
+  .requestCard .success,
+  .requestCard .error { @apply mt-1 inline-block px-3 py-1.5 text-left text-xs; }
+
+  /* ---------- Navigation basse ---------- */
+  .bottom-nav {
+    @apply fixed inset-x-0 bottom-0 z-[900] hidden border-t border-white/60
+           bg-white/85 backdrop-blur-2xl
+           sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:w-auto sm:-translate-x-1/2
+           sm:rounded-full sm:border sm:px-2 sm:shadow-lift;
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: 0 -6px 26px -14px rgba(22, 13, 18, 0.24);
+  }
+  .nav-item {
+    @apply flex flex-1 flex-col items-center gap-0.5 rounded-none border-0 bg-transparent
+           bg-none px-0 py-2.5 text-[11px] font-bold tracking-wide text-ink-300
+           shadow-none transition hover:translate-y-0 hover:bg-transparent hover:shadow-none
+           sm:flex-none sm:rounded-full sm:px-7 sm:py-3;
+  }
+  .nav-item.active { @apply text-brand-600; }
+  .nav-item .nav-icon { @apply text-[21px] leading-none transition-transform duration-200; }
+  .nav-item.active .nav-icon { @apply scale-110; }
+}
+
+/* ---------------------------------------------------------
+   Habillage de la carte Leaflet (hors portée de Tailwind)
+   --------------------------------------------------------- */
+
+.leaflet-container {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  background: #f4eef1;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 16px;
+  box-shadow: 0 12px 36px -12px rgba(22, 13, 18, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  padding: 2px 4px;
+}
+.leaflet-popup-content {
+  margin: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #160d12;
+}
+.leaflet-popup-tip { box-shadow: none; }
+.leaflet-popup-close-button { color: #8b7681 !important; }
+
+.leaflet-control-zoom {
+  border: none !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow: 0 6px 20px -8px rgba(22, 13, 18, 0.32) !important;
+}
+.leaflet-control-zoom a {
+  width: 36px;
+  height: 36px;
+  line-height: 36px;
+  color: #2e2028;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom-color: rgba(255, 61, 110, 0.12) !important;
+  font-weight: 600;
+}
+.leaflet-control-zoom a:hover { background: #fff; color: #ed1f55; }
+
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(8px);
+  border-radius: 10px 0 0 0;
+  font-size: 10px;
+  color: #8b7681;
+  padding: 3px 7px;
+}
+.leaflet-control-attribution a { color: #c81147; }
+
+.leaflet-marker-icon {
+  transition: transform 0.18s cubic-bezier(0.22, 0.9, 0.28, 1);
+  cursor: pointer;
+}
+.leaflet-marker-icon:hover { transform: scale(1.22) translateY(-2px); }
+
+/* ---------------------------------------------------------
+   Finitions globales
+   --------------------------------------------------------- */
+
+* { scrollbar-width: thin; scrollbar-color: #ffc5d2 transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: #ffc5d2;
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: #ff9db4; background-clip: content-box; }
+
+/* Évite le zoom automatique des champs sur iOS */
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select { font-size: 16px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

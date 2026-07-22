@@ -1,1 +1,8 @@
-
+node_modules/
+public/
+.vercel/
+.claude/
+1-CONNEXION-VERCEL.bat
+.DS_Store
+Thumbs.db
+*.log

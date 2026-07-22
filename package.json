@@ -1,0 +1,15 @@
+{
+  "name": "dette",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dette — rencontres express : un lieu, une photo, une demande.",
+  "scripts": {
+    "build": "tailwindcss -i ./src/input.css -o ./style.css --minify",
+    "vercel-build": "tailwindcss -i ./src/input.css -o ./style.css --minify && node tools/vercel-copy.js",
+    "watch": "tailwindcss -i ./src/input.css -o ./style.css --watch",
+    "serve": "python -m http.server 5173"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

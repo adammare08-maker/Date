@@ -2,110 +2,291 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#FF3D6E" />
+<meta name="description" content="Choisis un lieu, montre-toi, rencontre. Des rencontres express, sans prise de tête." />
 <title>Dette — Rencontres express</title>
+
+<!-- Application installable (PWA) -->
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Dette" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+<!-- Design compilé depuis src/input.css par « npm run build » -->
 <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
 
+<!-- ============================== ACCUEIL ============================== -->
 <div id="view-landing" class="view active">
-  <main class="container">
-    <div class="hero">
-      <h1>Dette</h1>
-      <p class="tagline">Choisis un lieu. Montre-toi. Rencontre.</p>
-      <p class="sub">Des rencontres express, sans prise de tête : un lieu, une photo, un message pour te vendre. Les personnes intéressées te font une demande — tu choisis avec qui tu es "en dette".</p>
+  <main class="container-app">
+
+    <div class="mb-8 text-center">
+      <div class="relative mx-auto mb-5 flex h-24 w-24 items-center justify-center">
+        <span class="absolute inset-0 rounded-full bg-gradient-to-br from-brand-500 to-ember-500 opacity-20 blur-2xl"></span>
+        <span class="relative flex h-20 w-20 animate-floaty items-center justify-center rounded-4xl bg-gradient-to-br from-brand-500 to-ember-500 text-4xl shadow-glowlg">
+          <span class="animate-beat">❤️</span>
+        </span>
+      </div>
+
+      <h1 class="bg-gradient-to-br from-brand-500 via-brand-600 to-ember-500 bg-clip-text text-6xl font-black tracking-[-0.045em] text-transparent sm:text-7xl">
+        Dette
+      </h1>
+      <p class="mt-3 text-[17px] font-bold tracking-tight text-ink-900">
+        Choisis un lieu. Montre-toi. Rencontre.
+      </p>
+      <p class="mx-auto mt-2.5 max-w-sm text-[14px] leading-relaxed text-ink-300">
+        Des rencontres express, sans prise de tête : un lieu, une photo, un message pour te vendre.
+        Les personnes intéressées te font une demande — tu choisis avec qui tu es « en dette ».
+      </p>
     </div>
-    <form id="landing-form" class="card">
+
+    <!-- Trois atouts -->
+    <div class="mb-6 grid grid-cols-3 gap-3">
+      <div class="glass rounded-2xl px-2 py-4 text-center shadow-soft">
+        <div class="text-xl">📍</div>
+        <p class="mt-1.5 text-[11px] font-bold leading-tight text-ink-500">Un lieu<br />sur la carte</p>
+      </div>
+      <div class="glass rounded-2xl px-2 py-4 text-center shadow-soft">
+        <div class="text-xl">📸</div>
+        <p class="mt-1.5 text-[11px] font-bold leading-tight text-ink-500">Une photo<br />authentique</p>
+      </div>
+      <div class="glass rounded-2xl px-2 py-4 text-center shadow-soft">
+        <div class="text-xl">⚡</div>
+        <p class="mt-1.5 text-[11px] font-bold leading-tight text-ink-500">Une réponse<br />immédiate</p>
+      </div>
+    </div>
+
+    <!-- Étape 1 : connexion -->
+    <div id="landing-signin" class="card shadow-lift">
+      <button type="button" id="btn-google"
+              class="ghost w-full gap-3 py-4 text-base !text-ink-700 hover:!border-brand-300">
+        <svg class="h-5 w-5 shrink-0" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2.5 24 .5 14.6.5 6.5 5.8 2.6 13.6l7.8 6.1C12.3 13.3 17.7 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.2 5.6c4.2-3.9 6.6-9.6 6.6-16.4z"/>
+          <path fill="#FBBC05" d="M10.4 28.3c-.5-1.4-.8-2.8-.8-4.3s.3-3 .8-4.3l-7.8-6.1C1 16.8 0 20.3 0 24s1 7.2 2.6 10.4l7.8-6.1z"/>
+          <path fill="#34A853" d="M24 47.5c6.2 0 11.5-2 15.3-5.6l-7.2-5.6c-2 1.4-4.6 2.2-8.1 2.2-6.3 0-11.7-3.8-13.6-9.2l-7.8 6.1C6.5 42.2 14.6 47.5 24 47.5z"/>
+        </svg>
+        Continuer avec Google
+      </button>
+      <p id="signin-error" class="error" style="display:none"></p>
+      <p class="fineprint">
+        Réservé aux 18 ans et plus.<br />
+        Tes photos et messages sont visibles par les autres membres.
+      </p>
+    </div>
+
+    <!-- Étape 2 : finalisation du profil (après retour de Google) -->
+    <form id="landing-form" class="card shadow-lift" style="display:none">
+      <div>
+        <h3>Presque fini !</h3>
+        <p class="mt-1 text-[13px] text-ink-300">Confirme ton prénom et ton âge pour entrer.</p>
+      </div>
       <label>Prénom
-        <input id="landing-name" placeholder="Ton prénom" />
+        <input id="landing-name" placeholder="Ton prénom" autocomplete="given-name" />
       </label>
       <label>Date de naissance
         <input id="landing-birthdate" type="date" />
       </label>
       <p id="landing-error" class="error" style="display:none"></p>
-      <button type="submit">Entrer</button>
-      <p class="fineprint">En continuant, tu confirmes avoir 18 ans ou plus. Version démo — les données restent sur cet appareil.</p>
+      <button type="submit" class="mt-1 w-full py-4 text-base">Entrer</button>
+      <button type="button" class="ghost w-full" id="btn-signout-cancel">Changer de compte</button>
     </form>
   </main>
 </div>
 
+<!-- ============================== CARTE ============================== -->
 <div id="view-map" class="view">
-  <main class="mapPage">
+  <main class="flex h-[100dvh] flex-col">
     <header class="topbar">
       <span class="brand">Dette</span>
-      <div>
-        <button class="ghost" id="btn-inbox">Demandes</button>
-        <button class="ghost" id="btn-logout">Quitter</button>
+
+      <div class="flex items-center gap-2">
+        <button class="ghost hidden sm:inline-flex" id="btn-inbox">Demandes</button>
+
+        <!-- Puce d'identité + menu -->
+        <div class="relative">
+          <button type="button" id="btn-profile"
+                  class="ghost !gap-2 !py-1.5 !pl-1.5 !pr-3"
+                  aria-haspopup="true" aria-expanded="false">
+            <img id="profile-avatar" alt="" referrerpolicy="no-referrer"
+                 class="h-7 w-7 shrink-0 rounded-full object-cover ring-2 ring-brand-100"
+                 style="display:none" />
+            <span id="profile-initial"
+                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-ember-500 text-[13px] font-black text-white"></span>
+            <span id="profile-firstname" class="hidden max-w-[7rem] truncate text-[13px] font-bold sm:inline"></span>
+            <svg class="h-3.5 w-3.5 shrink-0 opacity-50" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M5.5 7.5 10 12l4.5-4.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+
+          <div id="profile-panel"
+               class="absolute right-0 top-full z-40 mt-2 w-72 origin-top-right animate-popIn rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lift backdrop-blur-xl"
+               style="display:none">
+            <div class="flex items-center gap-3">
+              <img id="panel-avatar" alt="" referrerpolicy="no-referrer"
+                   class="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-brand-100"
+                   style="display:none" />
+              <span id="panel-initial"
+                    class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-ember-500 text-lg font-black text-white"></span>
+              <div class="min-w-0 flex-1">
+                <p id="panel-name" class="truncate text-[15px] font-extrabold tracking-tight text-ink-900"></p>
+                <p id="panel-email" class="truncate text-[12px] font-medium text-ink-300"></p>
+              </div>
+            </div>
+
+            <div class="mt-3 flex items-center gap-2 rounded-2xl bg-brand-50 px-3 py-2">
+              <span class="text-sm">🔗</span>
+              <p id="panel-provider" class="text-[11.5px] font-semibold text-ink-500"></p>
+            </div>
+
+            <button type="button" class="ghost mt-4 w-full py-3 text-[14px]" data-logout>
+              Se déconnecter
+            </button>
+          </div>
+        </div>
+
+        <!-- Déconnexion toujours visible -->
+        <button type="button" class="ghost !gap-1.5" data-logout title="Se déconnecter">
+          <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="M16 17l5-5-5-5" />
+            <path d="M21 12H9" />
+          </svg>
+          <span class="hidden sm:inline">Quitter</span>
+        </button>
       </div>
     </header>
-    <div class="mapWrap"><div id="leaflet-map"></div></div>
-    <p class="hint">Touche un endroit sur la carte pour y proposer une dette. Touche un coeur pour voir une offre.</p>
-    <div class="nav-spacer"></div>
+
+    <div class="relative flex-1">
+      <div id="leaflet-map" class="h-full w-full"></div>
+
+      <!-- Bulle d'aide flottante -->
+      <div class="pointer-events-none absolute inset-x-0 bottom-4 z-[500] flex justify-center px-4 sm:bottom-32">
+        <p class="glass pointer-events-auto rounded-full px-5 py-2.5 text-center text-[12.5px] font-semibold text-ink-500 shadow-lift">
+          Touche la carte pour proposer une dette · ❤️ pour voir une offre
+        </p>
+      </div>
+    </div>
+
+    <div class="h-[68px] shrink-0 sm:h-0"></div>
   </main>
 </div>
 
+<!-- ====================== FEUILLE : PROPOSER UNE DETTE ====================== -->
 <div id="sheet-overlay" class="sheetOverlay">
   <form id="create-form" class="sheet">
-    <h3>Propose une dette ici</h3>
-    <label>Nom du lieu (optionnel)
-      <input id="create-place" placeholder="Ex: Café des Fleurs" />
+    <div>
+      <h3>Propose une dette ici</h3>
+      <p class="mt-1 text-[13px] text-ink-300">Montre qui tu es et donne envie qu'on te rejoigne.</p>
+    </div>
+
+    <label>Nom du lieu <span class="font-medium normal-case tracking-normal text-ink-200">(optionnel)</span>
+      <input id="create-place" placeholder="Ex : Café des Fleurs" />
     </label>
+
     <div class="photo-field">
-      <label style="margin-bottom:0">Ta photo</label>
+      <label>Ta photo</label>
       <div class="photo-thumb-row">
-        <img id="create-preview" class="preview" style="display:none" />
+        <img id="create-preview" class="preview" alt="" style="display:none" />
         <div class="photo-actions">
-          <button type="button" id="create-camera-btn">Ouvrir la caméra</button>
+          <button type="button" id="create-camera-btn">📷 Ouvrir la caméra</button>
           <input type="file" id="create-photo-fallback" accept="image/*" capture="user" style="display:none" />
         </div>
       </div>
     </div>
+
     <label>Ton message pour te vendre
       <textarea id="create-message" maxlength="200" placeholder="Sois toi-même, sois bref..."></textarea>
     </label>
-    <button type="submit" id="create-submit" disabled>Publier</button>
-    <button type="button" class="ghost" id="create-cancel">Annuler</button>
+
+    <button type="submit" id="create-submit" class="w-full py-4" disabled>Publier</button>
+    <button type="button" class="ghost w-full" id="create-cancel">Annuler</button>
   </form>
 </div>
 
-<div id="camera-overlay" class="sheetOverlay">
-  <div class="camera-modal">
-    <video id="camera-video" autoplay playsinline muted></video>
-    <p class="camera-hint" id="camera-hint">Cadre ton visage puis appuie sur le bouton pour te prendre en photo.</p>
-    <div class="camera-controls">
-      <button type="button" class="ghost" id="camera-cancel">Annuler</button>
-      <button type="button" id="camera-shutter" aria-label="Prendre la photo" class="shutter-btn"></button>
-      <button type="button" class="ghost" id="camera-switch">Changer</button>
+<!-- ============================== CAMÉRA ============================== -->
+<div id="camera-overlay" class="sheetOverlay !items-center p-4">
+  <div class="w-full max-w-md animate-popIn overflow-hidden rounded-4xl bg-black shadow-2xl">
+    <video id="camera-video" autoplay playsinline muted
+           class="block aspect-[3/4] w-full -scale-x-100 bg-black object-cover"></video>
+    <p id="camera-hint" class="px-5 pt-3 text-center text-xs text-white/65">
+      Cadre ton visage puis appuie sur le bouton pour te prendre en photo.
+    </p>
+    <div class="flex items-center justify-between bg-black px-6 py-5">
+      <button type="button" id="camera-cancel"
+              class="ghost !border-white/25 !bg-transparent px-4 py-2 text-[13px] !text-white hover:!bg-white/10">Annuler</button>
+      <button type="button" id="camera-shutter" aria-label="Prendre la photo"
+              class="h-[68px] w-[68px] shrink-0 rounded-full !bg-white !bg-none p-0 !shadow-none ring-4 ring-brand-500/50 hover:scale-105"></button>
+      <button type="button" id="camera-switch"
+              class="ghost !border-white/25 !bg-transparent px-4 py-2 text-[13px] !text-white hover:!bg-white/10">Changer</button>
     </div>
   </div>
 </div>
-<canvas id="camera-canvas" style="display:none"></canvas>
+<canvas id="camera-canvas" class="hidden"></canvas>
 
+<!-- ============================== OFFRE ============================== -->
 <div id="view-offer" class="view">
-  <main class="container">
-    <button class="ghost" id="offer-back">&larr; Retour à la carte</button>
+  <main class="container-app">
+    <button class="ghost mb-6" id="offer-back">&larr; Retour à la carte</button>
     <div id="offer-detail" class="card"></div>
-    <div id="offer-action"></div>
+    <div id="offer-action" class="mt-4"></div>
   </main>
 </div>
 
+<!-- ============================== DEMANDES ============================== -->
 <div id="view-inbox" class="view">
-  <main class="container">
-    <button class="ghost" id="inbox-back">&larr; Retour à la carte</button>
-    <h2>Demandes reçues</h2>
-    <div id="inbox-received"></div>
-    <h2>Mes demandes envoyées</h2>
-    <div id="inbox-sent"></div>
+  <main class="container-app">
+    <button class="ghost mb-6" id="inbox-back">&larr; Retour à la carte</button>
+
+    <div class="mb-4 flex items-center gap-2.5">
+      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-lg">💌</span>
+      <h2>Demandes reçues</h2>
+    </div>
+    <div id="inbox-received" class="flex flex-col gap-4"></div>
+
+    <div class="mb-4 mt-10 flex items-center gap-2.5">
+      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-lg">📤</span>
+      <h2>Mes demandes envoyées</h2>
+    </div>
+    <div id="inbox-sent" class="flex flex-col gap-4"></div>
   </main>
 </div>
 
+<!-- ============================== NAVIGATION ============================== -->
 <nav id="bottom-nav" class="bottom-nav" style="display:none;">
-  <button type="button" class="nav-item" data-nav="map"><span class="nav-icon">🗺️</span><span>Carte</span></button>
-  <button type="button" class="nav-item" data-nav="inbox"><span class="nav-icon">💌</span><span>Demandes</span></button>
+  <button type="button" class="nav-item" data-nav="map">
+    <span class="nav-icon">🗺️</span><span>Carte</span>
+  </button>
+  <button type="button" class="nav-item" data-nav="inbox">
+    <span class="nav-icon">💌</span><span>Demandes</span>
+  </button>
 </nav>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
 <script src="app.js"></script>
+
+<!-- Service Worker : installation sur l'écran d'accueil + démarrage hors ligne -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .catch((err) => console.warn('Service Worker non enregistré :', err));
+    });
+  }
+</script>
 </body>
 </html>
