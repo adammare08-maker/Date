@@ -709,7 +709,7 @@ async function renderInbox() {
               '<button class="btn-pass" data-decline="' + r.id + '">Pas intéressé</button>' +
             '</div>'
           : '<p class="' + (r.status === 'accepted' ? 'success' : 'error') + '">' +
-              (r.status === 'accepted' ? 'Acceptée' : 'Refusée') +
+              (r.status === 'accepted' ? 'Acceptée · 💬 Messages' : 'Refusée') +
             '</p>';
         return '<div class="card profile-card">' +
             '<div class="msg-bubble">' + escapeHtml(r.message) + '</div>' +
@@ -728,7 +728,7 @@ async function renderInbox() {
         const statusText = r.status === 'pending'
           ? 'En attente...'
           : r.status === 'accepted'
-            ? 'Acceptée — vous pouvez vous rencontrer !'
+            ? 'Acceptée — allez dans 💬 Messages'
             : 'Refusée';
         const cls = r.status === 'accepted' ? 'success' : r.status === 'declined' ? 'error' : 'hint';
         return '<div class="card requestCard">' +
@@ -811,6 +811,563 @@ document.getElementById('btn-signout-cancel').addEventListener('click', async ()
   showSignInStep();
 });
 
+/* =========================================================
+   MESSAGERIE
+   Une messagerie volontairement minimale, pensée pour amener
+   à une vraie rencontre — pas pour discuter des semaines.
+   Aucune notion de « en ligne », « vu » ou « écrit… ».
+   ========================================================= */
+
+let conversationsCache = [];
+let chatOpenId = null;
+let chatOther = null;       // { name, photo }
+let chatMeetings = [];
+let chatConfs = [];         // confirmations du rendez-vous en cours
+let chatConvo = null;
+let chatChannel = null;
+
+const EMOJIS = ['😊','😄','😉','😍','🥰','😂','👍','🙌','🎉','☕','🍸','🍕','🚶','🎬','🌸','❤️','🔥','✨','🙏','👋'];
+
+// Seuils de la suggestion douce « et si vous vous rencontriez ? »
+const NUDGE_MIN_MESSAGES = 10;
+const NUDGE_MIN_DAYS = 2;
+
+/* ---------- Suivi local du « déjà lu » (jamais montré à l'autre) ---------- */
+function getSeenMap() { return read('dette_seen', {}); }
+function markConversationSeen(convoId, iso) {
+  const m = getSeenMap();
+  m[convoId] = iso || new Date().toISOString();
+  write('dette_seen', m);
+}
+function conversationHasUnread(convo) {
+  const last = convo.last_message;
+  if (!last || last.sender_id === user.id) return false;
+  const seen = getSeenMap()[convo.id];
+  return !seen || new Date(last.created_at) > new Date(seen);
+}
+
+/* ---------- Formatage des dates (léger, en français) ---------- */
+function fmtTime(d) {
+  return new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+function fmtDayLabel(d) {
+  const date = new Date(d);
+  const auj = new Date(); auj.setHours(0, 0, 0, 0);
+  const j = new Date(date); j.setHours(0, 0, 0, 0);
+  const diff = Math.round((auj - j) / 86400000);
+  if (diff === 0) return "Aujourd'hui";
+  if (diff === 1) return 'Hier';
+  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+function fmtMeetingWhen(d) {
+  return new Date(d).toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+  });
+}
+function fmtRelative(d) {
+  const diff = new Date(d) - Date.now();
+  const abs = Math.abs(diff);
+  const h = Math.floor(abs / 3600000);
+  const m = Math.floor((abs % 3600000) / 60000);
+  const jour = Math.floor(h / 24);
+  let texte;
+  if (jour >= 1) texte = jour + (jour > 1 ? ' jours' : ' jour');
+  else if (h >= 1) texte = h + ' h' + (m ? ' ' + m + ' min' : '');
+  else texte = m + ' min';
+  return diff >= 0 ? 'dans ' + texte : 'il y a ' + texte;
+}
+
+/* ---------- Accès aux données ---------- */
+
+// « L'autre personne » selon qui je suis dans la conversation.
+function otherOf(convo) {
+  if (convo.owner_id === user.id) {
+    return { name: convo.request?.requester_name || 'Anonyme', photo: convo.request?.photo_url || '' };
+  }
+  return { name: convo.offer?.user_name || 'Anonyme', photo: convo.offer?.photo_url || '' };
+}
+
+async function fetchConversations() {
+  const { data, error } = await sb
+    .from('conversations')
+    .select('*, offer:offers(user_name, photo_url, place_name), request:requests(requester_name, photo_url)')
+    .or('owner_id.eq.' + user.id + ',guest_id.eq.' + user.id)
+    .order('last_message_at', { ascending: false });
+  if (error) { console.error(error); return conversationsCache; }
+
+  const convos = data || [];
+  // Dernier message de chaque conversation (une seule requête).
+  const ids = convos.map(c => c.id);
+  if (ids.length) {
+    const { data: msgs } = await sb
+      .from('messages')
+      .select('conversation_id, body, sender_id, created_at')
+      .in('conversation_id', ids)
+      .order('created_at', { ascending: false });
+    const dernier = {};
+    (msgs || []).forEach(m => { if (!dernier[m.conversation_id]) dernier[m.conversation_id] = m; });
+    convos.forEach(c => { c.last_message = dernier[c.id] || null; });
+  }
+  conversationsCache = convos;
+  return convos;
+}
+
+async function fetchMessages(convoId) {
+  const { data, error } = await sb
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', convoId)
+    .order('created_at', { ascending: true });
+  if (error) { console.error(error); return []; }
+  return data || [];
+}
+
+async function sendMessage(convoId, body) {
+  const { error } = await sb.from('messages').insert({
+    conversation_id: convoId, sender_id: user.id, body,
+  });
+  if (error) throw error;
+}
+
+async function fetchMeetings(convoId) {
+  const { data } = await sb
+    .from('meetings')
+    .select('*')
+    .eq('conversation_id', convoId)
+    .order('created_at', { ascending: false });
+  return data || [];
+}
+
+async function fetchConfirmations(meetingId) {
+  const { data } = await sb
+    .from('meeting_confirmations')
+    .select('*')
+    .eq('meeting_id', meetingId);
+  return data || [];
+}
+
+async function proposeMeeting(convoId, meetAtIso, place) {
+  const { error } = await sb.from('meetings').insert({
+    conversation_id: convoId, proposer_id: user.id, meet_at: meetAtIso, place,
+  });
+  if (error) throw error;
+}
+
+async function respondMeeting(meetingId, status) {
+  const { error } = await sb.from('meetings').update({ status }).eq('id', meetingId);
+  if (error) throw error;
+}
+
+async function confirmMeeting(meeting, attended) {
+  const { error } = await sb.from('meeting_confirmations').insert({
+    meeting_id: meeting.id, conversation_id: meeting.conversation_id,
+    user_id: user.id, attended,
+  });
+  if (error) throw error;
+}
+
+/* ---------- Liste des conversations ---------- */
+
+async function renderConversations() {
+  const cont = document.getElementById('conversations-list');
+  cont.innerHTML = '<p class="hint">Chargement...</p>';
+  const convos = await fetchConversations();
+  updateNavDot();
+
+  if (!convos.length) {
+    cont.innerHTML =
+      '<div class="card items-center text-center">' +
+        '<div class="text-3xl">💬</div>' +
+        '<p class="text-[14px] font-semibold text-ink-700">Aucune conversation pour l\'instant</p>' +
+        '<p class="hint">Une conversation s\'ouvre dès qu\'une demande est acceptée, d\'un côté ou de l\'autre.</p>' +
+      '</div>';
+    return;
+  }
+
+  cont.innerHTML = convos.map(c => {
+    const o = otherOf(c);
+    const apercu = c.last_message
+      ? (c.last_message.sender_id === user.id ? 'Vous : ' : '') + c.last_message.body
+      : 'Dites bonjour 👋';
+    const heure = c.last_message ? fmtTime(c.last_message.created_at) : '';
+    const avatar = o.photo
+      ? '<img src="' + escapeHtml(o.photo) + '" class="avatar" referrerpolicy="no-referrer" alt="" />'
+      : '<span class="initial">' + escapeHtml((o.name[0] || '?').toUpperCase()) + '</span>';
+    const pastille = conversationHasUnread(c) ? '<span class="convo-badge">•</span>' : '';
+    return '<button type="button" class="convo-row" data-convo="' + c.id + '">' +
+        avatar +
+        '<div class="min-w-0 flex-1">' +
+          '<div class="flex items-center gap-2"><span class="convo-name">' + escapeHtml(o.name) + '</span>' +
+            (c.unlocked ? '<span class="text-xs">🎉</span>' : '') +
+            '<span class="convo-time ml-auto">' + heure + '</span></div>' +
+          '<p class="convo-preview">' + escapeHtml(apercu) + '</p>' +
+        '</div>' + pastille +
+      '</button>';
+  }).join('');
+
+  cont.querySelectorAll('[data-convo]').forEach(btn =>
+    btn.addEventListener('click', () => openConversation(btn.dataset.convo))
+  );
+}
+
+function updateNavDot() {
+  const nBrut = conversationsCache.some(conversationHasUnread);
+  const dot = document.getElementById('nav-messages-dot');
+  if (dot) dot.style.display = nBrut ? 'block' : 'none';
+}
+
+/* ---------- Ouverture d'une conversation ---------- */
+
+async function openConversation(convoId) {
+  chatConvo = conversationsCache.find(c => c.id === convoId) || null;
+  if (!chatConvo) { await fetchConversations(); chatConvo = conversationsCache.find(c => c.id === convoId) || null; }
+  if (!chatConvo) return;
+
+  chatOpenId = convoId;
+  chatOther = otherOf(chatConvo);
+
+  // En-tête
+  const av = document.getElementById('chat-avatar');
+  const ini = document.getElementById('chat-initial');
+  if (chatOther.photo) {
+    av.src = chatOther.photo; av.style.display = 'block'; ini.style.display = 'none';
+    av.onerror = () => { av.style.display = 'none'; ini.style.display = 'flex'; };
+  } else { av.style.display = 'none'; ini.style.display = 'flex'; }
+  ini.textContent = (chatOther.name[0] || '?').toUpperCase();
+  document.getElementById('chat-name').textContent = chatOther.name;
+  document.getElementById('chat-sub').textContent = chatConvo.unlocked
+    ? 'Vous vous êtes rencontrés 🎉'
+    : 'Vous avez matché — faites connaissance';
+
+  showView('chat');
+  setMessagesTabActive();
+
+  const [msgs, meetings] = await Promise.all([fetchMessages(convoId), fetchMeetings(convoId)]);
+  chatMeetings = meetings;
+  const active = latestRelevantMeeting();
+  chatConfs = active ? await fetchConfirmations(active.id) : [];
+
+  renderMessages(msgs);
+  renderMeetingArea();
+  renderNudge(msgs.length);
+
+  const last = msgs[msgs.length - 1];
+  markConversationSeen(convoId, last ? last.created_at : new Date().toISOString());
+  updateNavDot();
+  scrollChatToBottom();
+}
+
+function setMessagesTabActive() {
+  document.querySelectorAll('.nav-item').forEach(b =>
+    b.classList.toggle('active', b.dataset.nav === 'messages'));
+}
+
+function scrollChatToBottom() {
+  const s = document.getElementById('chat-scroll');
+  requestAnimationFrame(() => { s.scrollTop = s.scrollHeight; });
+}
+
+/* ---------- Rendu des messages ---------- */
+
+function renderMessages(msgs) {
+  const cont = document.getElementById('chat-messages');
+  if (!msgs.length) {
+    cont.innerHTML = '<p class="hint">Dites simplement bonjour 👋</p>';
+    return;
+  }
+  let html = '';
+  let dernierJour = '';
+  msgs.forEach(m => {
+    const jour = fmtDayLabel(m.created_at);
+    if (jour !== dernierJour) { html += '<div class="day-sep">' + jour + '</div>'; dernierJour = jour; }
+    const mine = m.sender_id === user.id;
+    html += '<div class="bubble-row ' + (mine ? 'mine' : 'theirs') + '">' +
+        '<div>' +
+          '<div class="bubble ' + (mine ? 'mine' : 'theirs') + '">' + escapeHtml(m.body) + '</div>' +
+          '<div class="bubble-time">' + fmtTime(m.created_at) + '</div>' +
+        '</div>' +
+      '</div>';
+  });
+  cont.innerHTML = html;
+}
+
+function appendMessage(m) {
+  // Ajout léger sans tout re-render (réception temps réel).
+  const cont = document.getElementById('chat-messages');
+  if (cont.querySelector('.hint')) cont.innerHTML = '';
+  const mine = m.sender_id === user.id;
+  const div = document.createElement('div');
+  div.className = 'bubble-row ' + (mine ? 'mine' : 'theirs');
+  div.innerHTML = '<div><div class="bubble ' + (mine ? 'mine' : 'theirs') + '">' +
+    escapeHtml(m.body) + '</div><div class="bubble-time">' + fmtTime(m.created_at) + '</div></div>';
+  cont.appendChild(div);
+  scrollChatToBottom();
+}
+
+/* ---------- Rendez-vous ---------- */
+
+// La proposition la plus récente qui n'est ni refusée ni annulée.
+function latestRelevantMeeting() {
+  return chatMeetings.find(m => m.status === 'pending' || m.status === 'accepted') || null;
+}
+
+function myConfirmation() {
+  return chatConfs.find(c => c.user_id === user.id) || null;
+}
+
+function renderMeetingArea() {
+  const zone = document.getElementById('chat-meeting');
+  const m = latestRelevantMeeting();
+
+  if (!m) { zone.innerHTML = ''; return; }
+
+  const quand = fmtMeetingWhen(m.meet_at);
+  const passe = new Date(m.meet_at) < new Date();
+
+  // ---- Proposition en attente ----
+  if (m.status === 'pending') {
+    if (m.proposer_id === user.id) {
+      zone.innerHTML =
+        '<div class="meeting-card">' +
+          '<div class="head">📅 Proposition envoyée</div>' +
+          '<div class="detail">📍 ' + escapeHtml(m.place) + '</div>' +
+          '<div class="detail">🕒 ' + quand + '</div>' +
+          '<p class="muted">En attente de sa réponse. Pas de pression — laissez-lui le temps.</p>' +
+          '<button type="button" class="btn-danger" data-meet-cancel="' + m.id + '">Annuler la proposition</button>' +
+        '</div>';
+    } else {
+      zone.innerHTML =
+        '<div class="meeting-card">' +
+          '<div class="head">📅 ' + escapeHtml(chatOther.name) + ' propose une rencontre</div>' +
+          '<div class="detail">📍 ' + escapeHtml(m.place) + '</div>' +
+          '<div class="detail">🕒 ' + quand + '</div>' +
+          '<div class="meeting-actions">' +
+            '<button type="button" class="btn-interest" data-meet-accept="' + m.id + '">Accepter</button>' +
+            '<button type="button" class="btn-pass" data-meet-decline="' + m.id + '">Refuser</button>' +
+          '</div>' +
+          '<button type="button" class="ghost" data-meet-counter="1">Proposer un autre créneau</button>' +
+        '</div>';
+    }
+  }
+
+  // ---- Rendez-vous accepté ----
+  else if (m.status === 'accepted') {
+    if (!passe) {
+      zone.innerHTML =
+        '<div class="meeting-card">' +
+          '<div class="head">✅ Rencontre prévue</div>' +
+          '<div class="detail">📍 ' + escapeHtml(m.place) + '</div>' +
+          '<div class="detail">🕒 ' + quand + '</div>' +
+          '<div><span class="countdown">⏳ ' + fmtRelative(m.meet_at) + '</span></div>' +
+        '</div>';
+    } else {
+      const conf = myConfirmation();
+      if (!conf) {
+        zone.innerHTML =
+          '<div class="meeting-card">' +
+            '<div class="head">💛 Avez-vous bien eu votre rendez-vous ?</div>' +
+            '<div class="meeting-actions">' +
+              '<button type="button" class="btn-interest" data-meet-yes="' + m.id + '">✅ Oui</button>' +
+              '<button type="button" class="btn-pass" data-meet-no="' + m.id + '">❌ Non</button>' +
+            '</div>' +
+          '</div>';
+      } else if (conf.attended) {
+        zone.innerHTML =
+          '<div class="meeting-card">' +
+            '<div class="head">💛 Merci !</div>' +
+            '<p class="muted">' + (chatConvo.unlocked
+              ? 'Vous vous êtes rencontrés tous les deux. La conversation est désormais libre.'
+              : 'En attente de sa confirmation de son côté.') + '</p>' +
+          '</div>';
+      } else {
+        zone.innerHTML =
+          '<div class="meeting-card"><div class="head">Rendez-vous manqué</div>' +
+            '<p class="muted">Vous pouvez en proposer un autre quand vous voulez.</p></div>';
+      }
+    }
+  }
+
+  // Boutons du bandeau
+  zone.querySelectorAll('[data-meet-accept]').forEach(b => b.addEventListener('click', () => onRespondMeeting(b.dataset.meetAccept, 'accepted')));
+  zone.querySelectorAll('[data-meet-decline]').forEach(b => b.addEventListener('click', () => onRespondMeeting(b.dataset.meetDecline, 'declined')));
+  zone.querySelectorAll('[data-meet-cancel]').forEach(b => b.addEventListener('click', () => onRespondMeeting(b.dataset.meetCancel, 'cancelled')));
+  zone.querySelectorAll('[data-meet-counter]').forEach(b => b.addEventListener('click', openMeetingSheet));
+  zone.querySelectorAll('[data-meet-yes]').forEach(b => b.addEventListener('click', () => onConfirmMeeting(b.dataset.meetYes, true)));
+  zone.querySelectorAll('[data-meet-no]').forEach(b => b.addEventListener('click', () => onConfirmMeeting(b.dataset.meetNo, false)));
+}
+
+async function onRespondMeeting(meetingId, status) {
+  try {
+    await respondMeeting(meetingId, status);
+    await reloadChatMeetings();
+  } catch (err) { alert(humanError(err)); }
+}
+
+async function onConfirmMeeting(meetingId, attended) {
+  try {
+    const m = chatMeetings.find(x => x.id === meetingId);
+    await confirmMeeting(m, attended);
+    await reloadChatMeetings();
+  } catch (err) { alert(humanError(err)); }
+}
+
+async function reloadChatMeetings() {
+  chatMeetings = await fetchMeetings(chatOpenId);
+  // Recharge la conversation (pour l'état « unlocked ») et les confirmations.
+  const active = latestRelevantMeeting();
+  chatConfs = active ? await fetchConfirmations(active.id) : [];
+  const { data } = await sb.from('conversations').select('unlocked').eq('id', chatOpenId).maybeSingle();
+  if (data) chatConvo.unlocked = data.unlocked;
+  renderMeetingArea();
+  renderNudge(document.querySelectorAll('#chat-messages .bubble').length);
+}
+
+/* ---------- Suggestion douce ---------- */
+
+function renderNudge(messageCount) {
+  const zone = document.getElementById('chat-nudge');
+  const m = latestRelevantMeeting();
+
+  // Pas de suggestion si un rendez-vous est déjà en cours, ou si déjà rencontrés.
+  if (m || chatConvo.unlocked) { zone.innerHTML = ''; return; }
+
+  const joursEcoules = (Date.now() - new Date(chatConvo.created_at)) / 86400000;
+  const assez = messageCount >= NUDGE_MIN_MESSAGES || joursEcoules >= NUDGE_MIN_DAYS;
+  if (!assez) { zone.innerHTML = ''; return; }
+
+  zone.innerHTML =
+    '<div class="nudge-card">' +
+      '<div class="text-2xl">✨</div>' +
+      '<p>Vous semblez bien vous entendre. Pourquoi ne pas organiser votre première rencontre ?</p>' +
+      '<button type="button" id="nudge-propose">📅 Proposer une rencontre</button>' +
+    '</div>';
+  document.getElementById('nudge-propose').addEventListener('click', openMeetingSheet);
+}
+
+/* ---------- Feuille de proposition ---------- */
+
+function openMeetingSheet() {
+  const f = document.getElementById('meeting-form');
+  f.reset();
+  document.getElementById('meeting-error').style.display = 'none';
+  document.getElementById('meeting-overlay').classList.add('active');
+}
+function closeMeetingSheet() {
+  document.getElementById('meeting-overlay').classList.remove('active');
+}
+document.getElementById('meeting-cancel').addEventListener('click', closeMeetingSheet);
+document.getElementById('meeting-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'meeting-overlay') closeMeetingSheet();
+});
+document.getElementById('chat-propose').addEventListener('click', openMeetingSheet);
+
+document.getElementById('meeting-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('meeting-submit');
+  const errEl = document.getElementById('meeting-error');
+  errEl.style.display = 'none';
+  const date = document.getElementById('meeting-date').value;
+  const time = document.getElementById('meeting-time').value;
+  const place = document.getElementById('meeting-place').value.trim();
+
+  if (!date || !time) { errEl.textContent = 'Choisis un jour et une heure.'; errEl.style.display = 'block'; return; }
+  if (!place) { errEl.textContent = 'Indique un lieu.'; errEl.style.display = 'block'; return; }
+  const meetAt = new Date(date + 'T' + time);
+  if (isNaN(meetAt) || meetAt < new Date()) { errEl.textContent = 'Choisis un moment à venir.'; errEl.style.display = 'block'; return; }
+
+  setBusy(btn, true, 'Envoi...');
+  try {
+    await proposeMeeting(chatOpenId, meetAt.toISOString(), place);
+    closeMeetingSheet();
+    await reloadChatMeetings();
+    scrollChatToBottom();
+  } catch (err) {
+    errEl.textContent = humanError(err); errEl.style.display = 'block';
+  } finally {
+    setBusy(btn, false);
+  }
+});
+
+/* ---------- Zone de saisie (texte + emojis uniquement) ---------- */
+
+const chatInput = document.getElementById('chat-input');
+const chatSend = document.getElementById('chat-send');
+
+chatInput.addEventListener('input', () => {
+  chatSend.disabled = chatInput.value.trim().length === 0;
+});
+
+document.getElementById('chat-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = chatInput.value.trim();
+  if (!body || !chatOpenId) return;
+  chatInput.value = '';
+  chatSend.disabled = true;
+  try {
+    await sendMessage(chatOpenId, body);
+    // Le message revient par le temps réel ; on l'ajoute tout de suite pour la fluidité.
+  } catch (err) {
+    alert(humanError(err));
+    chatInput.value = body;
+  }
+});
+
+// Barre d'emojis
+const emojiBar = document.getElementById('chat-emoji-bar');
+emojiBar.innerHTML = EMOJIS.map(e => '<button type="button">' + e + '</button>').join('');
+emojiBar.querySelectorAll('button').forEach(b =>
+  b.addEventListener('click', () => {
+    chatInput.value += b.textContent;
+    chatSend.disabled = chatInput.value.trim().length === 0;
+    chatInput.focus();
+  })
+);
+document.getElementById('chat-emoji-btn').addEventListener('click', () => {
+  emojiBar.style.display = emojiBar.style.display === 'none' ? 'flex' : 'none';
+});
+
+document.getElementById('chat-back').addEventListener('click', () => {
+  chatOpenId = null;
+  emojiBar.style.display = 'none';
+  showView('messages');
+  renderConversations();
+});
+
+/* ---------- Temps réel de la messagerie ---------- */
+
+function startChatRealtime() {
+  if (chatChannel) return;
+  chatChannel = sb
+    .channel('dette-chat')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+      const m = payload.new;
+      if (chatOpenId && m.conversation_id === chatOpenId) {
+        appendMessage(m);
+        markConversationSeen(chatOpenId, m.created_at);
+        renderNudge(document.querySelectorAll('#chat-messages .bubble').length);
+      } else {
+        // Message dans une autre conversation : on rafraîchit la pastille.
+        fetchConversations().then(updateNavDot);
+        if (document.getElementById('view-messages').classList.contains('active')) renderConversations();
+      }
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'meetings' }, (payload) => {
+      const row = payload.new || payload.old;
+      if (chatOpenId && row.conversation_id === chatOpenId) reloadChatMeetings();
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversations' }, (payload) => {
+      if (chatOpenId && payload.new.id === chatOpenId) {
+        chatConvo.unlocked = payload.new.unlocked;
+        renderMeetingArea();
+      }
+    })
+    .subscribe();
+}
+
+function stopChatRealtime() {
+  if (chatChannel) { sb.removeChannel(chatChannel); chatChannel = null; }
+}
+
 /* ---------------------------------------------------------
    Navigation
    --------------------------------------------------------- */
@@ -824,16 +1381,20 @@ document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
     showView(btn.dataset.nav);
     if (btn.dataset.nav === 'inbox') renderInbox();
+    if (btn.dataset.nav === 'messages') renderConversations();
   });
 });
 
 // Deux boutons de déconnexion : celui de la barre et celui du panneau d'identité.
 async function logout() {
   stopRealtime();
+  stopChatRealtime();
   toggleProfilePanel(false);
   await sb.auth.signOut();
   user = null;
   offersCache = [];
+  conversationsCache = [];
+  chatOpenId = null;
   currentOfferId = null;
   document.getElementById('bottom-nav').style.display = 'none';
   document.getElementById('landing-name').value = '';
@@ -860,6 +1421,9 @@ async function enterApp() {
   if (!map) initMap();
   await refreshMarkers();
   startRealtime();
+  startChatRealtime();
+  // Amorce la pastille « nouveaux messages » sans ouvrir l'onglet.
+  fetchConversations().then(updateNavDot).catch(() => {});
 }
 
 (async function boot() {

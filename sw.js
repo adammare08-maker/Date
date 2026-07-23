@@ -12,7 +12,7 @@
    pour forcer la mise à jour chez les utilisateurs.
    =========================================================== */
 
-const VERSION = 'dette-v2';
+const VERSION = 'dette-v3';
 const CACHE_COQUILLE = VERSION + '-coquille';
 const CACHE_EXTERNE = VERSION + '-externe';
 

@@ -187,6 +187,120 @@
   .nav-item.active { @apply text-brand-600; }
   .nav-item .nav-icon { @apply text-[21px] leading-none transition-transform duration-200; }
   .nav-item.active .nav-icon { @apply scale-110; }
+  .nav-dot {
+    @apply absolute right-1/2 top-1.5 h-2.5 w-2.5 translate-x-4 rounded-full bg-brand-500
+           ring-2 ring-white sm:right-4 sm:top-2 sm:translate-x-0;
+  }
+
+  /* ---------- Liste des conversations ---------- */
+  .convo-row {
+    @apply flex w-full items-center gap-3.5 rounded-3xl border border-white/70 bg-white/85 p-3.5
+           text-left shadow-soft backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-lift;
+  }
+  .convo-row .avatar { @apply h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-brand-100; }
+  .convo-row .initial {
+    @apply flex h-14 w-14 shrink-0 items-center justify-center rounded-full
+           bg-gradient-to-br from-brand-500 to-ember-500 text-lg font-black text-white;
+  }
+  .convo-name { @apply truncate text-[15px] font-extrabold tracking-tight text-ink-900; }
+  .convo-preview { @apply truncate text-[13px] text-ink-300; }
+  .convo-time { @apply shrink-0 text-[11px] font-semibold text-ink-200; }
+  .convo-badge {
+    @apply ml-auto flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full
+           bg-brand-500 px-1.5 text-[11px] font-black text-white;
+  }
+
+  /* ---------- Conversation ---------- */
+  .chat-topbar {
+    @apply z-20 flex items-center gap-3 border-b border-white/60 bg-white/85 px-3 py-2.5
+           backdrop-blur-2xl;
+    box-shadow: 0 6px 24px -14px rgba(22, 13, 18, 0.18);
+  }
+  .chat-back {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-0 bg-transparent
+           bg-none p-0 text-ink-500 shadow-none hover:translate-y-0 hover:bg-brand-50 hover:shadow-none;
+  }
+  .chat-initial { /* placeholder ring handled inline */ }
+  .chat-propose {
+    @apply shrink-0 gap-1.5 rounded-full border border-brand-100 bg-white/90 bg-none px-3.5 py-2
+           text-[13px] font-bold text-brand-700 shadow-none hover:border-brand-300 hover:bg-brand-50
+           hover:shadow-none;
+  }
+
+  .chat-scroll {
+    @apply flex-1 space-y-3 overflow-y-auto px-4 pb-6 pt-4;
+    scroll-behavior: smooth;
+  }
+
+  .chat-reminder {
+    @apply flex items-start gap-2.5 rounded-3xl border border-brand-100 bg-brand-50/70 px-4 py-3
+           text-[12.5px] font-medium leading-relaxed text-ink-500;
+  }
+
+  /* Bulles de message — aucune notion de « vu », « en ligne » ou « écrit… » */
+  .bubble-row { @apply flex w-full; }
+  .bubble-row.mine { @apply justify-end; }
+  .bubble {
+    @apply max-w-[78%] rounded-3xl px-4 py-2.5 text-[14.5px] leading-relaxed;
+    overflow-wrap: anywhere;
+  }
+  .bubble.theirs {
+    @apply rounded-bl-md border border-white/70 bg-white text-ink-900 shadow-soft;
+  }
+  .bubble.mine {
+    @apply rounded-br-md bg-gradient-to-br from-brand-500 to-ember-500 text-white shadow-glow;
+  }
+  .bubble-time { @apply mt-1 px-1 text-[10.5px] font-medium text-ink-200; }
+  .bubble-row.mine .bubble-time { @apply text-right; }
+  .day-sep { @apply my-2 text-center text-[11px] font-bold uppercase tracking-wider text-ink-200; }
+
+  /* Carte rendez-vous dans le fil */
+  .meeting-card {
+    @apply flex flex-col gap-3 rounded-3xl border border-brand-100 bg-white p-4 shadow-lift;
+  }
+  .meeting-card .head { @apply flex items-center gap-2 text-[14px] font-extrabold text-ink-900; }
+  .meeting-card .detail { @apply flex items-center gap-2 text-[13.5px] font-semibold text-ink-700; }
+  .meeting-card .muted { @apply text-[12.5px] font-medium text-ink-300; }
+  .meeting-actions { @apply flex flex-wrap gap-2; }
+  .meeting-actions button { @apply flex-1 px-3 py-2.5 text-[13px]; }
+  .countdown {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-[12.5px]
+           font-black text-brand-700;
+  }
+
+  /* Suggestion douce d'organiser la rencontre */
+  .nudge-card {
+    @apply flex flex-col items-center gap-3 rounded-3xl border border-brand-100
+           bg-gradient-to-br from-brand-50 to-white px-5 py-5 text-center shadow-soft;
+  }
+  .nudge-card p { @apply text-[13.5px] font-semibold leading-relaxed text-ink-700; }
+
+  /* Zone de saisie : volontairement minimale (pas de photo/voix/fichier) */
+  .chat-composer {
+    @apply flex items-center gap-2 border-t border-white/60 bg-white/90 px-3 py-2.5 backdrop-blur-2xl;
+    padding-bottom: calc(0.625rem + env(safe-area-inset-bottom));
+  }
+  .chat-emoji-btn {
+    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-0 bg-brand-50
+           bg-none p-0 text-xl shadow-none hover:translate-y-0 hover:bg-brand-100 hover:shadow-none;
+  }
+  .chat-input {
+    @apply h-11 flex-1 rounded-full border border-brand-100 bg-white px-4 text-[15px] font-medium
+           shadow-none focus:border-brand-400 focus:ring-4 focus:ring-brand-500/10;
+  }
+  .chat-send {
+    @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-full
+           bg-gradient-to-br from-brand-500 to-ember-500 p-0 text-white shadow-glow;
+  }
+  .chat-emoji-bar {
+    @apply flex flex-wrap justify-center gap-1 border-t border-white/60 bg-white/95 px-3 py-2
+           backdrop-blur-2xl;
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
+  .chat-emoji-bar button {
+    @apply h-10 w-10 rounded-xl border-0 bg-none p-0 text-xl shadow-none hover:translate-y-0
+           hover:bg-brand-50 hover:shadow-none;
+  }
 }
 
 /* ---------------------------------------------------------

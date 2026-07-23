@@ -281,6 +281,94 @@
   </main>
 </div>
 
+<!-- ============================== MESSAGES (liste) ============================== -->
+<div id="view-messages" class="view">
+  <main class="container-app">
+    <div class="mb-1 flex items-center gap-2.5">
+      <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-lg">💬</span>
+      <h2>Conversations</h2>
+    </div>
+    <p class="mb-5 text-[13px] leading-relaxed text-ink-300">
+      Une conversation s'ouvre quand une demande est acceptée. Juste de quoi faire connaissance et convenir d'un rendez-vous.
+    </p>
+    <div id="conversations-list" class="flex flex-col gap-3"></div>
+  </main>
+</div>
+
+<!-- ============================== CONVERSATION ============================== -->
+<div id="view-chat" class="view">
+  <main class="flex h-[100dvh] flex-col">
+    <!-- En-tête -->
+    <header class="chat-topbar">
+      <button type="button" id="chat-back" class="chat-back" aria-label="Retour">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <img id="chat-avatar" alt="" referrerpolicy="no-referrer"
+           class="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-brand-100" style="display:none" />
+      <span id="chat-initial" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-ember-500 text-sm font-black text-white"></span>
+      <div class="min-w-0 flex-1">
+        <p id="chat-name" class="truncate text-[15px] font-extrabold tracking-tight text-ink-900"></p>
+        <p id="chat-sub" class="truncate text-[12px] font-medium text-ink-300"></p>
+      </div>
+      <button type="button" id="chat-propose" class="chat-propose" title="Proposer une rencontre">
+        <span>📅</span><span class="hidden sm:inline">Rencontre</span>
+      </button>
+    </header>
+
+    <!-- Zone défilante : rappel + rendez-vous + messages -->
+    <div id="chat-scroll" class="chat-scroll">
+      <!-- Rappel apaisant (toujours en haut) -->
+      <div class="chat-reminder">
+        <span class="text-base">🌱</span>
+        <p>Votre objectif n'est pas de tout apprendre ici. Gardez de la découverte pour votre premier rendez-vous.</p>
+      </div>
+
+      <!-- Bandeau rendez-vous (proposition / confirmation / bilan) -->
+      <div id="chat-meeting"></div>
+
+      <!-- Suggestion douce (apparaît après quelques échanges) -->
+      <div id="chat-nudge"></div>
+
+      <!-- Fil des messages -->
+      <div id="chat-messages" class="flex flex-col gap-1.5 pt-1"></div>
+    </div>
+
+    <!-- Zone de saisie : texte + emojis uniquement -->
+    <form id="chat-form" class="chat-composer">
+      <button type="button" id="chat-emoji-btn" class="chat-emoji-btn" title="Emojis" aria-label="Emojis">🙂</button>
+      <input id="chat-input" type="text" maxlength="1000" autocomplete="off"
+             placeholder="Écris un message..." class="chat-input" />
+      <button type="submit" id="chat-send" class="chat-send" aria-label="Envoyer" disabled>
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4l17.45-7.48a1 1 0 000-1.84L3.4 3.6a1 1 0 00-1.39 1.15L4 11l10 1-10 1-1.99 6.25a1 1 0 001.39 1.15z"/></svg>
+      </button>
+    </form>
+    <!-- Barre d'emojis rapide -->
+    <div id="chat-emoji-bar" class="chat-emoji-bar" style="display:none"></div>
+  </main>
+</div>
+
+<!-- ================= FEUILLE : PROPOSER UNE RENCONTRE ================= -->
+<div id="meeting-overlay" class="sheetOverlay">
+  <form id="meeting-form" class="sheet">
+    <div>
+      <h3>📅 Proposer une rencontre</h3>
+      <p class="mt-1 text-[13px] text-ink-300">Simple et concret : un jour, une heure, un lieu. L'autre accepte ou propose autre chose.</p>
+    </div>
+    <label>Jour
+      <input id="meeting-date" type="date" />
+    </label>
+    <label>Heure
+      <input id="meeting-time" type="time" />
+    </label>
+    <label>Lieu
+      <input id="meeting-place" maxlength="120" placeholder="Ex : Café des Fleurs, place de la Mairie" />
+    </label>
+    <p id="meeting-error" class="error" style="display:none"></p>
+    <button type="submit" id="meeting-submit" class="w-full py-4">Envoyer la proposition</button>
+    <button type="button" class="ghost w-full" id="meeting-cancel">Annuler</button>
+  </form>
+</div>
+
 <!-- ============================== NAVIGATION ============================== -->
 <nav id="bottom-nav" class="bottom-nav" style="display:none;">
   <button type="button" class="nav-item" data-nav="map">
@@ -288,6 +376,10 @@
   </button>
   <button type="button" class="nav-item" data-nav="inbox">
     <span class="nav-icon">💌</span><span>Demandes</span>
+  </button>
+  <button type="button" class="nav-item relative" data-nav="messages">
+    <span class="nav-icon">💬</span><span>Messages</span>
+    <span id="nav-messages-dot" class="nav-dot" style="display:none"></span>
   </button>
 </nav>
 
