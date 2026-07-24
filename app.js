@@ -862,6 +862,22 @@ let chatMeetings = [];
 let chatConfs = [];         // confirmations du rendez-vous en cours
 let chatConvo = null;
 let chatChannel = null;
+let chatPollTimer = null;   // filet de sécurité si le temps réel rate un message
+
+// Recherche périodique des nouveaux messages tant qu'une conversation est ouverte.
+function startChatPolling() {
+  stopChatPolling();
+  chatPollTimer = setInterval(async () => {
+    if (!chatOpenId || document.hidden) return;
+    try {
+      const msgs = await fetchMessages(chatOpenId);
+      msgs.forEach(appendMessage); // déjà dédoublonné
+    } catch { /* réseau : on réessaiera au tick suivant */ }
+  }, 4000);
+}
+function stopChatPolling() {
+  if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
+}
 
 const EMOJIS = ['😊','😄','😉','😍','🥰','😂','👍','🙌','🎉','☕','🍸','🍕','🚶','🎬','🌸','❤️','🔥','✨','🙏','👋'];
 
@@ -960,10 +976,11 @@ async function fetchMessages(convoId) {
 }
 
 async function sendMessage(convoId, body) {
-  const { error } = await sb.from('messages').insert({
+  const { data, error } = await sb.from('messages').insert({
     conversation_id: convoId, sender_id: user.id, body,
-  });
+  }).select().single();
   if (error) throw error;
+  return data;
 }
 
 async function fetchMeetings(convoId) {
@@ -1098,6 +1115,7 @@ async function openConversation(convoId) {
   markConversationSeen(convoId, last ? last.created_at : new Date().toISOString());
   updateNavDot();
   scrollChatToBottom();
+  startChatPolling();
 }
 
 function setMessagesTabActive() {
@@ -1124,7 +1142,7 @@ function renderMessages(msgs) {
     const jour = fmtDayLabel(m.created_at);
     if (jour !== dernierJour) { html += '<div class="day-sep">' + jour + '</div>'; dernierJour = jour; }
     const mine = m.sender_id === user.id;
-    html += '<div class="bubble-row ' + (mine ? 'mine' : 'theirs') + '">' +
+    html += '<div class="bubble-row ' + (mine ? 'mine' : 'theirs') + '" data-mid="' + m.id + '">' +
         '<div>' +
           '<div class="bubble ' + (mine ? 'mine' : 'theirs') + '">' + escapeHtml(m.body) + '</div>' +
           '<div class="bubble-time">' + fmtTime(m.created_at) + '</div>' +
@@ -1135,12 +1153,15 @@ function renderMessages(msgs) {
 }
 
 function appendMessage(m) {
-  // Ajout léger sans tout re-render (réception temps réel).
+  // Ajout léger sans tout re-render. Anti-doublon : si le message est déjà
+  // affiché (envoi instantané + écho temps réel + filet de sécurité), on ignore.
   const cont = document.getElementById('chat-messages');
+  if (cont.querySelector('[data-mid="' + m.id + '"]')) return;
   if (cont.querySelector('.hint')) cont.innerHTML = '';
   const mine = m.sender_id === user.id;
   const div = document.createElement('div');
   div.className = 'bubble-row ' + (mine ? 'mine' : 'theirs');
+  div.dataset.mid = m.id;
   div.innerHTML = '<div><div class="bubble ' + (mine ? 'mine' : 'theirs') + '">' +
     escapeHtml(m.body) + '</div><div class="bubble-time">' + fmtTime(m.created_at) + '</div></div>';
   cont.appendChild(div);
@@ -1347,11 +1368,12 @@ document.getElementById('chat-form').addEventListener('submit', async (e) => {
   chatInput.value = '';
   chatSend.disabled = true;
   try {
-    await sendMessage(chatOpenId, body);
-    // Le message revient par le temps réel ; on l'ajoute tout de suite pour la fluidité.
+    const msg = await sendMessage(chatOpenId, body);
+    appendMessage(msg); // Affichage instantané (le temps réel le dédoublonnera).
   } catch (err) {
     alert(humanError(err));
     chatInput.value = body;
+    chatSend.disabled = false;
   }
 });
 
@@ -1371,6 +1393,7 @@ document.getElementById('chat-emoji-btn').addEventListener('click', () => {
 
 document.getElementById('chat-back').addEventListener('click', () => {
   chatOpenId = null;
+  stopChatPolling();
   emojiBar.style.display = 'none';
   showView('messages');
   renderConversations();
@@ -1388,6 +1411,7 @@ document.getElementById('chat-delete').addEventListener('click', async () => {
   try {
     await deleteConversation(id);
     chatOpenId = null;
+    stopChatPolling();
     emojiBar.style.display = 'none';
     showView('messages');
     renderConversations();
@@ -1428,6 +1452,7 @@ function startChatRealtime() {
       const supprimee = payload.old && payload.old.id;
       if (chatOpenId && supprimee === chatOpenId) {
         chatOpenId = null;
+        stopChatPolling();
         emojiBar.style.display = 'none';
         alert('Cette conversation a été terminée.');
         showView('messages');
@@ -1464,6 +1489,7 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 async function logout() {
   stopRealtime();
   stopChatRealtime();
+  stopChatPolling();
   toggleProfilePanel(false);
   await sb.auth.signOut();
   user = null;
