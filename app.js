@@ -37,6 +37,10 @@ function showView(name) {
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.nav === name);
   });
+  // Dans une conversation, on masque la barre du bas pour libérer la zone de saisie.
+  const nav = document.getElementById('bottom-nav');
+  if (name === 'chat') nav.style.display = 'none';
+  else if (user) nav.style.display = 'flex';
   if (name === 'map') setTimeout(() => map && map.invalidateSize(), 50);
 }
 
