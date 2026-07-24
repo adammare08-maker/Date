@@ -5,13 +5,13 @@
    voit et ne modifie que ce qui le concerne.
    =========================================================== */
 
-const APP_VERSION = 'v8';
+const APP_VERSION = 'v9';
 
 const sb = window.supabase.createClient(DETTE_CONFIG.url, DETTE_CONFIG.key);
 
 // Affiche le numéro de version (diagnostic : savoir quelle version tourne).
 document.querySelectorAll('[data-version]').forEach(el => { el.textContent = 'Version ' + APP_VERSION; });
-console.log('Dette ' + APP_VERSION + ' chargée.');
+console.log('Date ' + APP_VERSION + ' chargée.');
 
 let user = null;            // { id, name }
 let map = null;
@@ -592,12 +592,12 @@ async function renderOfferView() {
   if (offer.user_id === user.id) {
     action.innerHTML =
       '<p class="hint">C\'est ta propre offre. Retrouve les demandes reçues dans l\'onglet « Demandes ».</p>' +
-      '<button type="button" id="delete-offer-btn" class="btn-danger w-full">🗑️ Supprimer cette dette</button>';
+      '<button type="button" id="delete-offer-btn" class="btn-danger w-full">🗑️ Supprimer ce date</button>';
 
     document.getElementById('delete-offer-btn').addEventListener('click', async (e) => {
       const bouton = e.currentTarget;
       const ok = window.confirm(
-        'Supprimer cette dette ?\n\n' +
+        'Supprimer ce date ?\n\n' +
         'Elle disparaîtra de la carte, ainsi que sa photo et toutes les demandes reçues. ' +
         'Cette action est définitive.'
       );
@@ -815,7 +815,7 @@ document.getElementById('landing-form').addEventListener('submit', async (e) => 
   if (!name) { errEl.textContent = 'Entre un prénom.'; errEl.style.display = 'block'; return; }
   if (!birthdate) { errEl.textContent = 'Entre ta date de naissance.'; errEl.style.display = 'block'; return; }
   const age = Math.floor((Date.now() - new Date(birthdate).getTime()) / (365.25 * 24 * 3600 * 1000));
-  if (age < 18) { errEl.textContent = 'Dette est réservé aux 18 ans et plus.'; errEl.style.display = 'block'; return; }
+  if (age < 18) { errEl.textContent = 'Date est réservé aux 18 ans et plus.'; errEl.style.display = 'block'; return; }
 
   setBusy(submitBtn, true, 'Un instant...');
   try {
