@@ -99,7 +99,8 @@
       <p id="signin-error" class="error" style="display:none"></p>
       <p class="fineprint">
         Réservé aux 18 ans et plus.<br />
-        Tes photos et messages sont visibles par les autres membres.
+        Tes photos et messages sont visibles par les autres membres.<br />
+        <span data-version class="opacity-60"></span>
       </p>
     </div>
 
@@ -170,6 +171,7 @@
             <button type="button" class="ghost mt-4 w-full py-3 text-[14px]" data-logout>
               Se déconnecter
             </button>
+            <p data-version class="mt-2 text-center text-[10px] text-ink-200"></p>
           </div>
         </div>
 
@@ -398,8 +400,22 @@
 <!-- Service Worker : installation sur l'écran d'accueil + démarrage hors ligne -->
 <script>
   if ('serviceWorker' in navigator) {
+    // Recharge automatiquement quand une nouvelle version prend le contrôle.
+    let dejaRecharge = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (dejaRecharge) return;
+      dejaRecharge = true;
+      window.location.reload();
+    });
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js')
+        .then((reg) => {
+          reg.update();
+          // Vérifie les mises à jour à chaque retour dans l'app.
+          document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) reg.update();
+          });
+        })
         .catch((err) => console.warn('Service Worker non enregistré :', err));
     });
   }

@@ -5,7 +5,13 @@
    voit et ne modifie que ce qui le concerne.
    =========================================================== */
 
+const APP_VERSION = 'v8';
+
 const sb = window.supabase.createClient(DETTE_CONFIG.url, DETTE_CONFIG.key);
+
+// Affiche le numéro de version (diagnostic : savoir quelle version tourne).
+document.querySelectorAll('[data-version]').forEach(el => { el.textContent = 'Version ' + APP_VERSION; });
+console.log('Dette ' + APP_VERSION + ' chargée.');
 
 let user = null;            // { id, name }
 let map = null;
@@ -873,7 +879,7 @@ function startChatPolling() {
       const msgs = await fetchMessages(chatOpenId);
       msgs.forEach(appendMessage); // déjà dédoublonné
     } catch { /* réseau : on réessaiera au tick suivant */ }
-  }, 4000);
+  }, 3000);
 }
 function stopChatPolling() {
   if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
