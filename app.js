@@ -958,6 +958,12 @@ async function respondMeeting(meetingId, status) {
   if (error) throw error;
 }
 
+// Met fin à une conversation (le match). Cascade : messages + rendez-vous éventuel.
+async function deleteConversation(convoId) {
+  const { error } = await sb.from('conversations').delete().eq('id', convoId);
+  if (error) throw error;
+}
+
 async function confirmMeeting(meeting, attended) {
   const { error } = await sb.from('meeting_confirmations').insert({
     meeting_id: meeting.id, conversation_id: meeting.conversation_id,
@@ -1333,6 +1339,26 @@ document.getElementById('chat-back').addEventListener('click', () => {
   renderConversations();
 });
 
+document.getElementById('chat-delete').addEventListener('click', async () => {
+  if (!chatOpenId) return;
+  const ok = window.confirm(
+    'Mettre fin à cette conversation ?\n\n' +
+    'Elle disparaîtra pour vous deux, avec les messages et le rendez-vous éventuel. ' +
+    'Cette action est définitive.'
+  );
+  if (!ok) return;
+  const id = chatOpenId;
+  try {
+    await deleteConversation(id);
+    chatOpenId = null;
+    emojiBar.style.display = 'none';
+    showView('messages');
+    renderConversations();
+  } catch (err) {
+    alert(humanError(err));
+  }
+});
+
 /* ---------- Temps réel de la messagerie ---------- */
 
 function startChatRealtime() {
@@ -1359,6 +1385,18 @@ function startChatRealtime() {
       if (chatOpenId && payload.new.id === chatOpenId) {
         chatConvo.unlocked = payload.new.unlocked;
         renderMeetingArea();
+      }
+    })
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'conversations' }, (payload) => {
+      const supprimee = payload.old && payload.old.id;
+      if (chatOpenId && supprimee === chatOpenId) {
+        chatOpenId = null;
+        emojiBar.style.display = 'none';
+        alert('Cette conversation a été terminée.');
+        showView('messages');
+        renderConversations();
+      } else {
+        fetchConversations().then(updateNavDot);
       }
     })
     .subscribe();
