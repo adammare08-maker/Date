@@ -330,14 +330,21 @@ async function setRequestStatus(id, status) {
   if (error) throw error;
 }
 
-async function hasAlreadyRequested(offerId) {
+// Ma demande sur cette offre (id + statut), ou null si je n'en ai pas envoyé.
+async function getMyRequestForOffer(offerId) {
   const { data } = await sb
     .from('requests')
-    .select('id')
+    .select('id, status')
     .eq('offer_id', offerId)
     .eq('requester_id', user.id)
     .maybeSingle();
-  return !!data;
+  return data || null;
+}
+
+// Annuler / retirer sa demande.
+async function cancelRequest(id) {
+  const { error } = await sb.from('requests').delete().eq('id', id);
+  if (error) throw error;
 }
 
 /* ---------------------------------------------------------
@@ -601,8 +608,34 @@ async function renderOfferView() {
   }
 
   action.innerHTML = '<p class="hint">Chargement...</p>';
-  if (await hasAlreadyRequested(offer.id)) {
-    action.innerHTML = '<p class="success">Ta demande a déjà été envoyée !</p>';
+  const myReq = await getMyRequestForOffer(offer.id);
+
+  if (myReq) {
+    // Un match accepté se gère depuis la conversation (onglet Messages).
+    if (myReq.status === 'accepted') {
+      action.innerHTML = '<p class="success">Vous avez matché ! Retrouvez la conversation dans 💬 Messages.</p>';
+      return;
+    }
+    // En attente ou refusée : on peut retirer sa demande.
+    const refusee = myReq.status === 'declined';
+    action.innerHTML =
+      '<p class="' + (refusee ? 'error' : 'success') + '">' +
+        (refusee ? 'Ta demande a été refusée.' : 'Ta demande a déjà été envoyée !') +
+      '</p>' +
+      '<button type="button" id="cancel-request-btn" class="btn-danger mt-3 w-full">🗑️ Annuler ma demande</button>';
+
+    document.getElementById('cancel-request-btn').addEventListener('click', async (e) => {
+      const ok = window.confirm('Annuler ta demande ?\n\nElle sera retirée. Tu pourras en refaire une plus tard si tu veux.');
+      if (!ok) return;
+      setBusy(e.currentTarget, true, 'Annulation...');
+      try {
+        await cancelRequest(myReq.id);
+        renderOfferView(); // Recharge : le bouton « Je suis intéressé » réapparaît.
+      } catch (err) {
+        alert(humanError(err));
+        setBusy(e.currentTarget, false);
+      }
+    });
     return;
   }
 
