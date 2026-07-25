@@ -5,7 +5,7 @@
    voit et ne modifie que ce qui le concerne.
    =========================================================== */
 
-const APP_VERSION = 'v9';
+const APP_VERSION = 'v10';
 
 const sb = window.supabase.createClient(DETTE_CONFIG.url, DETTE_CONFIG.key);
 
@@ -879,7 +879,7 @@ function startChatPolling() {
       const msgs = await fetchMessages(chatOpenId);
       msgs.forEach(appendMessage); // déjà dédoublonné
     } catch { /* réseau : on réessaiera au tick suivant */ }
-  }, 3000);
+  }, 2500);
 }
 function stopChatPolling() {
   if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
@@ -1527,6 +1527,12 @@ async function enterApp() {
   showView('map');
   if (!map) initMap();
   await refreshMarkers();
+  // Donne au temps réel le jeton de connexion pour qu'il livre les données
+  // protégées (messages) — sans ça, il ne délivre rien sur les tables sécurisées.
+  try {
+    const { data } = await sb.auth.getSession();
+    if (data.session) sb.realtime.setAuth(data.session.access_token);
+  } catch { /* on garde le filet de sécurité par recherche périodique */ }
   startRealtime();
   startChatRealtime();
   // Amorce la pastille « nouveaux messages » sans ouvrir l'onglet.
