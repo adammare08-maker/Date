@@ -5,7 +5,7 @@
    voit et ne modifie que ce qui le concerne.
    =========================================================== */
 
-const APP_VERSION = 'v10';
+const APP_VERSION = 'v11';
 
 const sb = window.supabase.createClient(DETTE_CONFIG.url, DETTE_CONFIG.key);
 
@@ -946,39 +946,63 @@ function otherOf(convo) {
   return { name: convo.offer?.user_name || 'Anonyme', photo: convo.offer?.photo_url || '' };
 }
 
-async function fetchConversations() {
-  const { data, error } = await sb
-    .from('conversations')
-    .select('*, offer:offers(user_name, photo_url, place_name), request:requests(requester_name, photo_url)')
-    .or('owner_id.eq.' + user.id + ',guest_id.eq.' + user.id)
-    .order('last_message_at', { ascending: false });
-  if (error) { console.error(error); return conversationsCache; }
+// Empêche une requête de rester bloquée indéfiniment (réseau mobile capricieux).
+function withTimeout(query, ms = 8000) {
+  return Promise.race([
+    Promise.resolve(query),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Délai dépassé')), ms)),
+  ]);
+}
 
-  const convos = data || [];
-  // Dernier message de chaque conversation (une seule requête).
-  const ids = convos.map(c => c.id);
-  if (ids.length) {
-    const { data: msgs } = await sb
-      .from('messages')
-      .select('conversation_id, body, sender_id, created_at')
-      .in('conversation_id', ids)
-      .order('created_at', { ascending: false });
-    const dernier = {};
-    (msgs || []).forEach(m => { if (!dernier[m.conversation_id]) dernier[m.conversation_id] = m; });
-    convos.forEach(c => { c.last_message = dernier[c.id] || null; });
+let conversationsFetchOk = true;
+
+async function fetchConversations() {
+  try {
+    const { data, error } = await withTimeout(
+      sb.from('conversations')
+        .select('*, offer:offers(user_name, photo_url, place_name), request:requests(requester_name, photo_url)')
+        .or('owner_id.eq.' + user.id + ',guest_id.eq.' + user.id)
+        .order('last_message_at', { ascending: false }),
+      8000
+    );
+    if (error) throw error;
+    conversationsFetchOk = true;
+    const convos = data || [];
+
+    // Aperçu du dernier message : au mieux, sans JAMAIS bloquer l'affichage de la liste.
+    const ids = convos.map(c => c.id);
+    if (ids.length) {
+      try {
+        const { data: msgs } = await withTimeout(
+          sb.from('messages')
+            .select('conversation_id, body, sender_id, created_at')
+            .in('conversation_id', ids)
+            .order('created_at', { ascending: false }),
+          6000
+        );
+        const dernier = {};
+        (msgs || []).forEach(m => { if (!dernier[m.conversation_id]) dernier[m.conversation_id] = m; });
+        convos.forEach(c => { c.last_message = dernier[c.id] || null; });
+      } catch (e) { console.warn('Aperçus indisponibles :', e.message); }
+    }
+    conversationsCache = convos;
+    return convos;
+  } catch (e) {
+    console.error('fetchConversations :', e.message);
+    conversationsFetchOk = false;
+    return conversationsCache;
   }
-  conversationsCache = convos;
-  return convos;
 }
 
 async function fetchMessages(convoId) {
-  const { data, error } = await sb
-    .from('messages')
-    .select('*')
-    .eq('conversation_id', convoId)
-    .order('created_at', { ascending: true });
-  if (error) { console.error(error); return []; }
-  return data || [];
+  try {
+    const { data, error } = await withTimeout(
+      sb.from('messages').select('*').eq('conversation_id', convoId).order('created_at', { ascending: true }),
+      8000
+    );
+    if (error) throw error;
+    return data || [];
+  } catch (e) { console.warn('fetchMessages :', e.message); return []; }
 }
 
 async function sendMessage(convoId, body) {
@@ -1039,6 +1063,19 @@ async function renderConversations() {
   cont.innerHTML = '<p class="hint">Chargement...</p>';
   const convos = await fetchConversations();
   updateNavDot();
+
+  // Connexion trop lente : on ne reste jamais bloqué, on propose de réessayer.
+  if (!conversationsFetchOk && !convos.length) {
+    cont.innerHTML =
+      '<div class="card items-center text-center">' +
+        '<div class="text-3xl">📡</div>' +
+        '<p class="text-[14px] font-semibold text-ink-700">Connexion difficile</p>' +
+        '<p class="hint">Impossible de charger tes conversations pour le moment. Vérifie ta connexion.</p>' +
+        '<button type="button" id="retry-convos" class="w-full">Réessayer</button>' +
+      '</div>';
+    document.getElementById('retry-convos').addEventListener('click', renderConversations);
+    return;
+  }
 
   if (!convos.length) {
     cont.innerHTML =
