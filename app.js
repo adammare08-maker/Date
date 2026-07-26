@@ -5,7 +5,7 @@
    voit et ne modifie que ce qui le concerne.
    =========================================================== */
 
-const APP_VERSION = 'v12';
+const APP_VERSION = 'v13';
 
 const sb = window.supabase.createClient(DETTE_CONFIG.url, DETTE_CONFIG.key);
 
@@ -369,12 +369,20 @@ function pinIcon(emoji) {
 }
 
 function initMap() {
-  map = L.map('leaflet-map', { zoomControl: true }).setView([48.8566, 2.3522], 13);
-  // Fond de carte épuré (CARTO Positron) : rues claires, aucun commerce affiché.
-  // Gratuit, sans clé ni carte bancaire. Seuls nos propres marqueurs apparaissent.
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  map = L.map('leaflet-map', {
+    zoomControl: true,
+    minZoom: 3,                              // empêche de dézoomer jusqu'au monde entier
+    maxBounds: [[-85, -180], [85, 180]],     // interdit de partir dans le vide
+    maxBoundsViscosity: 1.0,
+    worldCopyJump: false,
+  }).setView([48.8566, 2.3522], 13);
+  // Fond coloré facon Google Maps (CARTO Voyager), mais épuré. Gratuit, sans clé.
+  // noWrap : le monde ne se répète plus horizontalement.
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     subdomains: 'abcd',
     maxZoom: 20,
+    noWrap: true,
+    bounds: [[-85, -180], [85, 180]],
     attribution: '&copy; OpenStreetMap &copy; CARTO'
   }).addTo(map);
   markersLayer = L.layerGroup().addTo(map);
