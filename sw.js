@@ -12,7 +12,7 @@
    pour forcer la mise à jour chez les utilisateurs.
    =========================================================== */
 
-const VERSION = 'dette-v11';
+const VERSION = 'dette-v12';
 const CACHE_COQUILLE = VERSION + '-coquille';
 const CACHE_EXTERNE = VERSION + '-externe';
 
@@ -55,7 +55,7 @@ self.addEventListener('activate', (event) => {
 function estDonneeVivante(url) {
   return (
     url.hostname.endsWith('supabase.co') ||   // API, auth, photos
-    url.hostname.endsWith('tile.openstreetmap.org') || // tuiles de carte
+    url.hostname.endsWith('cartocdn.com') ||  // tuiles de carte (CARTO)
     url.hostname.endsWith('google.com') ||    // redirection OAuth
     url.hostname.endsWith('googleusercontent.com') // avatars
   );

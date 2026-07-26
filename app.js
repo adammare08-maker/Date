@@ -5,7 +5,7 @@
    voit et ne modifie que ce qui le concerne.
    =========================================================== */
 
-const APP_VERSION = 'v11';
+const APP_VERSION = 'v12';
 
 const sb = window.supabase.createClient(DETTE_CONFIG.url, DETTE_CONFIG.key);
 
@@ -369,9 +369,13 @@ function pinIcon(emoji) {
 }
 
 function initMap() {
-  map = L.map('leaflet-map').setView([48.8566, 2.3522], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+  map = L.map('leaflet-map', { zoomControl: true }).setView([48.8566, 2.3522], 13);
+  // Fond de carte épuré (CARTO Positron) : rues claires, aucun commerce affiché.
+  // Gratuit, sans clé ni carte bancaire. Seuls nos propres marqueurs apparaissent.
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
+    maxZoom: 20,
+    attribution: '&copy; OpenStreetMap &copy; CARTO'
   }).addTo(map);
   markersLayer = L.layerGroup().addTo(map);
 
