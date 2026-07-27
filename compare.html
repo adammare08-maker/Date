@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Comparaison des styles de carte — Date</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #fff7f9; color: #2a1a20; padding: 16px 14px 48px;
+  }
+  h1 { font-size: 22px; text-align: center; margin: 8px 0 4px;
+       background: linear-gradient(135deg,#ff3d6e,#ff7a59);
+       -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .intro { text-align: center; color: #8a7480; font-size: 14px; margin: 0 auto 22px; max-width: 460px; }
+  .grid { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+  .item { background: #fff; border-radius: 18px; overflow: hidden;
+          box-shadow: 0 6px 24px -12px rgba(0,0,0,.25); border: 1px solid #f0d9de; }
+  .head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+  .num { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+         background: linear-gradient(135deg,#ff3d6e,#ff7a59); color: #fff;
+         font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .name { font-weight: 800; font-size: 15px; }
+  .desc { color: #8a7480; font-size: 12.5px; margin-left: auto; text-align: right; }
+  .map { height: 240px; width: 100%; }
+  .soft .map { filter: saturate(.82) brightness(1.03) contrast(.98); }
+  .foot { text-align: center; color: #8a7480; font-size: 13px; margin: 28px auto 0; max-width: 460px; }
+</style>
+</head>
+<body>
+  <h1>Styles de carte — Date</h1>
+  <p class="intro">Voici les styles <strong>gratuits</strong> disponibles (sans carte bancaire).
+     Compare-les et dis à Claude le <strong>numéro</strong> que tu préfères.</p>
+
+  <div class="grid" id="grid"></div>
+
+  <p class="foot">Tous ces styles sont gratuits. Pour le vrai Google Maps à l'identique,
+     il faut une clé Google (avec carte bancaire).</p>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Chaque style : nom, description, URL des tuiles, et « soft » pour la version adoucie.
+    const styles = [
+      { name: 'Voyager (actuel de base)', desc: 'Coloré, façon Google', soft: false,
+        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', sub: 'abcd' },
+      { name: 'Voyager adouci (v14)', desc: 'Coloré mais doux', soft: true,
+        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', sub: 'abcd' },
+      { name: 'Positron', desc: 'Très clair, minimal', soft: false,
+        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', sub: 'abcd' },
+      { name: 'Positron sans noms', desc: 'Épuré, sans texte', soft: false,
+        url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', sub: 'abcd' },
+      { name: 'OpenStreetMap', desc: 'Classique, détaillé', soft: false,
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', sub: 'abc' },
+      { name: 'Dark (mode sombre)', desc: 'Fond noir élégant', soft: false,
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', sub: 'abcd' },
+    ];
+
+    const grid = document.getElementById('grid');
+    styles.forEach((s, i) => {
+      const item = document.createElement('div');
+      item.className = 'item' + (s.soft ? ' soft' : '');
+      item.innerHTML =
+        '<div class="head"><div class="num">' + (i + 1) + '</div>' +
+        '<div class="name">' + s.name + '</div>' +
+        '<div class="desc">' + s.desc + '</div></div>' +
+        '<div class="map" id="map' + i + '"></div>';
+      grid.appendChild(item);
+
+      const map = L.map('map' + i, {
+        center: [48.8566, 2.3522], zoom: 14,
+        zoomControl: false, attributionControl: false,
+        minZoom: 3, maxBounds: [[-85,-180],[85,180]],
+      });
+      L.tileLayer(s.url, { subdomains: s.sub, maxZoom: 20, noWrap: true }).addTo(map);
+    });
+  </script>
+</body>
+</html>
