@@ -309,7 +309,13 @@
 
 .leaflet-container {
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  background: #f4eef1;
+  background: #eaeef2;
+}
+
+/* Adoucit les couleurs des tuiles pour un rendu calme et naturel facon Google Maps
+   (moins saturé, légèrement plus clair) — appliqué à toute la couche d'un coup. */
+.leaflet-tile-pane {
+  filter: saturate(0.82) brightness(1.03) contrast(0.98);
 }
 
 .leaflet-popup-content-wrapper {
