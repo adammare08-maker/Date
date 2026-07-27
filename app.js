@@ -5,7 +5,7 @@
    voit et ne modifie que ce qui le concerne.
    =========================================================== */
 
-const APP_VERSION = 'v14';
+const APP_VERSION = 'v15';
 
 const sb = window.supabase.createClient(DETTE_CONFIG.url, DETTE_CONFIG.key);
 
