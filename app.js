@@ -5,7 +5,7 @@
    voit et ne modifie que ce qui le concerne.
    =========================================================== */
 
-const APP_VERSION = 'v15';
+const APP_VERSION = 'v16';
 
 const sb = window.supabase.createClient(DETTE_CONFIG.url, DETTE_CONFIG.key);
 
@@ -21,6 +21,7 @@ let createPhotoData = null; // dataURL de la photo prise/choisie
 let currentOfferId = null;
 let offersCache = [];
 let realtimeChannel = null;
+let blockedIds = new Set();   // personnes que j'ai bloquées
 
 let cameraStream = null;
 let cameraFacingMode = 'user';
@@ -263,7 +264,8 @@ async function fetchOffers() {
     .eq('status', 'active')
     .order('created_at', { ascending: false });
   if (error) { console.error(error); return offersCache; }
-  offersCache = data || [];
+  // Filtre les personnes bloquées (le serveur les cache déjà, ceinture + bretelles).
+  offersCache = (data || []).filter(o => !blockedIds.has(o.user_id));
   return offersCache;
 }
 
@@ -580,6 +582,98 @@ document.getElementById('camera-shutter').addEventListener('click', () => {
    Vue « offre »
    --------------------------------------------------------- */
 
+/* =========================================================
+   SÉCURITÉ : blocage et signalement (exigence Google Play)
+   ========================================================= */
+
+let reportCtx = null;
+
+const REPORT_REASONS = [
+  { key: 'inapproprie',   label: '🚫 Contenu inapproprié' },
+  { key: 'faux_profil',   label: '🎭 Faux profil' },
+  { key: 'harcelement',   label: '😠 Harcèlement' },
+  { key: 'contenu_sexuel',label: '🔞 Contenu sexuel' },
+  { key: 'mineur',        label: '⚠️ Personne mineure' },
+  { key: 'arnaque',       label: '💸 Arnaque' },
+  { key: 'autre',         label: '… Autre' },
+];
+
+async function loadBlocks() {
+  try {
+    const { data } = await sb.from('blocks').select('blocked_id').eq('blocker_id', user.id);
+    blockedIds = new Set((data || []).map(b => b.blocked_id));
+  } catch { blockedIds = new Set(); }
+}
+
+async function blockUser(targetUserId, name) {
+  const ok = window.confirm(
+    'Bloquer ' + (name || 'cette personne') + ' ?\n\n' +
+    'Vous ne verrez plus ses offres ni ses messages, et elle ne verra plus les vôtres. ' +
+    'Une conversation en cours sera retirée.'
+  );
+  if (!ok) return false;
+  try {
+    const { error } = await sb.from('blocks').insert({ blocker_id: user.id, blocked_id: targetUserId });
+    if (error && !/duplicate|already exists/i.test(error.message)) throw error;
+    blockedIds.add(targetUserId);
+    // Retire une éventuelle conversation avec cette personne.
+    const convo = conversationsCache.find(c => c.owner_id === targetUserId || c.guest_id === targetUserId);
+    if (convo) { try { await sb.from('conversations').delete().eq('id', convo.id); } catch {} }
+    return true;
+  } catch (err) { alert(humanError(err)); return false; }
+}
+
+function openReportSheet(ctx) {
+  reportCtx = ctx; // { targetType, targetId, reportedUserId }
+  const cont = document.getElementById('report-reasons');
+  cont.innerHTML = REPORT_REASONS.map(r =>
+    '<button type="button" class="ghost w-full !justify-start" data-reason="' + r.key + '">' + r.label + '</button>'
+  ).join('');
+  cont.querySelectorAll('[data-reason]').forEach(b =>
+    b.addEventListener('click', () => submitReport(b.dataset.reason)));
+  document.getElementById('report-overlay').classList.add('active');
+}
+function closeReportSheet() {
+  document.getElementById('report-overlay').classList.remove('active');
+  reportCtx = null;
+}
+document.getElementById('report-cancel').addEventListener('click', closeReportSheet);
+document.getElementById('report-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'report-overlay') closeReportSheet();
+});
+
+async function submitReport(reason) {
+  if (!reportCtx) return;
+  try {
+    await sb.from('reports').insert({
+      reporter_id: user.id,
+      reported_user_id: reportCtx.reportedUserId || null,
+      target_type: reportCtx.targetType,
+      target_id: reportCtx.targetId || null,
+      reason,
+    });
+    closeReportSheet();
+    alert("Merci, ton signalement a été envoyé. Notre équipe va l'examiner.");
+  } catch (err) { alert(humanError(err)); }
+}
+
+// Ajoute les boutons « Signaler / Bloquer » sous une offre qui n'est pas la mienne.
+function appendSafety(offer) {
+  const action = document.getElementById('offer-action');
+  const div = document.createElement('div');
+  div.className = 'mt-3 flex gap-2';
+  div.innerHTML =
+    '<button type="button" class="btn-pass flex-1 !py-2.5 text-[13px]" data-report>⚠️ Signaler</button>' +
+    '<button type="button" class="btn-danger flex-1 !py-2.5 text-[13px]" data-block>🚫 Bloquer</button>';
+  action.appendChild(div);
+  div.querySelector('[data-report]').addEventListener('click', () =>
+    openReportSheet({ targetType: 'offer', targetId: offer.id, reportedUserId: offer.user_id }));
+  div.querySelector('[data-block]').addEventListener('click', async () => {
+    const done = await blockUser(offer.user_id, offer.user_name);
+    if (done) { currentOfferId = null; await refreshMarkers(); showView('map'); }
+  });
+}
+
 async function renderOfferView() {
   const offer = cachedOffer(currentOfferId);
   const detail = document.getElementById('offer-detail');
@@ -636,6 +730,7 @@ async function renderOfferView() {
     // Un match accepté se gère depuis la conversation (onglet Messages).
     if (myReq.status === 'accepted') {
       action.innerHTML = '<p class="success">Vous avez matché ! Retrouvez la conversation dans 💬 Messages.</p>';
+      appendSafety(offer);
       return;
     }
     // En attente ou refusée : on peut retirer sa demande.
@@ -658,12 +753,14 @@ async function renderOfferView() {
         setBusy(e.currentTarget, false);
       }
     });
+    appendSafety(offer);
     return;
   }
 
   action.innerHTML = '<button type="button" id="interest-btn">Je suis intéressé</button>';
   document.getElementById('interest-btn')
     .addEventListener('click', () => showRequestForm(offer, action));
+  appendSafety(offer);
 }
 
 function showRequestForm(offer, action) {
@@ -749,10 +846,11 @@ async function renderInbox() {
   rc.innerHTML = '<p class="hint">Chargement...</p>';
   sc.innerHTML = '';
 
-  const [received, sent] = await Promise.all([
+  let [received, sent] = await Promise.all([
     fetchReceivedRequests(),
     fetchSentRequests(),
   ]);
+  received = received.filter(r => !blockedIds.has(r.requester_id));
 
   rc.innerHTML = received.length === 0
     ? '<p class="hint">Personne ne t\'a encore fait de demande.</p>'
@@ -979,7 +1077,11 @@ async function fetchConversations() {
     );
     if (error) throw error;
     conversationsFetchOk = true;
-    const convos = data || [];
+    // Masque les conversations avec une personne bloquée.
+    const convos = (data || []).filter(c => {
+      const otherId = c.owner_id === user.id ? c.guest_id : c.owner_id;
+      return !blockedIds.has(otherId);
+    });
 
     // Aperçu du dernier message : au mieux, sans JAMAIS bloquer l'affichage de la liste.
     const ids = convos.map(c => c.id);
@@ -1153,6 +1255,21 @@ async function openConversation(convoId) {
   document.getElementById('chat-sub').textContent = chatConvo.unlocked
     ? 'Vous vous êtes rencontrés 🎉'
     : 'Vous avez matché — faites connaissance';
+
+  // Sécurité : signaler / bloquer la personne (exigence Google Play)
+  const otherId = chatConvo.owner_id === user.id ? chatConvo.guest_id : chatConvo.owner_id;
+  const safety = document.getElementById('chat-safety');
+  safety.innerHTML =
+    '<div class="flex gap-2 pt-1">' +
+      '<button type="button" class="btn-pass flex-1 !py-2 text-[12px]" id="chat-report">⚠️ Signaler</button>' +
+      '<button type="button" class="btn-danger flex-1 !py-2 text-[12px]" id="chat-block">🚫 Bloquer</button>' +
+    '</div>';
+  document.getElementById('chat-report').addEventListener('click', () =>
+    openReportSheet({ targetType: 'conversation', targetId: chatConvo.id, reportedUserId: otherId }));
+  document.getElementById('chat-block').addEventListener('click', async () => {
+    const done = await blockUser(otherId, chatOther.name);
+    if (done) { chatOpenId = null; stopChatPolling(); showView('messages'); renderConversations(); }
+  });
 
   showView('chat');
   setMessagesTabActive();
@@ -1550,6 +1667,7 @@ async function logout() {
   user = null;
   offersCache = [];
   conversationsCache = [];
+  blockedIds = new Set();
   chatOpenId = null;
   currentOfferId = null;
   document.getElementById('bottom-nav').style.display = 'none';
@@ -1575,6 +1693,7 @@ async function enterApp() {
   document.getElementById('bottom-nav').style.display = 'flex';
   showView('map');
   if (!map) initMap();
+  await loadBlocks();
   await refreshMarkers();
   // Donne au temps réel le jeton de connexion pour qu'il livre les données
   // protégées (messages) — sans ça, il ne délivre rien sur les tables sécurisées.

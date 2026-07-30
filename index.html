@@ -332,6 +332,9 @@
         <p>Votre objectif n'est pas de tout apprendre ici. Gardez de la découverte pour votre premier rendez-vous.</p>
       </div>
 
+      <!-- Sécurité : signaler ou bloquer (exigence Google Play) -->
+      <div id="chat-safety"></div>
+
       <!-- Bandeau rendez-vous (proposition / confirmation / bilan) -->
       <div id="chat-meeting"></div>
 
@@ -376,6 +379,18 @@
     <button type="submit" id="meeting-submit" class="w-full py-4">Envoyer la proposition</button>
     <button type="button" class="ghost w-full" id="meeting-cancel">Annuler</button>
   </form>
+</div>
+
+<!-- ================= FEUILLE : SIGNALER ================= -->
+<div id="report-overlay" class="sheetOverlay">
+  <div class="sheet">
+    <div>
+      <h3>⚠️ Signaler</h3>
+      <p class="mt-1 text-[13px] text-ink-300">Pourquoi signales-tu ce contenu ? Notre équipe examinera ton signalement.</p>
+    </div>
+    <div id="report-reasons" class="flex flex-col gap-2"></div>
+    <button type="button" class="ghost w-full" id="report-cancel">Annuler</button>
+  </div>
 </div>
 
 <!-- ============================== NAVIGATION ============================== -->
